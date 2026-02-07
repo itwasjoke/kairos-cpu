@@ -76,7 +76,26 @@ const osThreadAttr_t defaultTask_attributes = {
   .priority = (osPriority_t) osPriorityNormal,
 };
 /* USER CODE BEGIN PV */
+RS485_Handle rs485 = {
+	.baud_rate = 115200,
+	.instance = UART4,
+	.stop_bits = UART_STOPBITS_1,
+	.de_port = RS485_DE_GPIO_Port,
+	.de_pin = RS485_DE_Pin,
+	.huart = &huart4,
+	.rxSem = NULL,
+	.txSem = NULL
+};
 
+CAN_Config_t can_config = {
+	.filter_id = 0,
+	.filter_mask = 0,
+	.baud_rate = 500000,
+	.hcan = &hcan1,
+	.rxQueue = NULL,
+	.instance = CAN1
+
+};
 /* USER CODE END PV */
 
 /* Private function prototypes -----------------------------------------------*/
@@ -236,7 +255,7 @@ void SystemClock_Config(void)
   RCC_ClkInitStruct.SYSCLKSource = RCC_SYSCLKSOURCE_PLLCLK;
   RCC_ClkInitStruct.AHBCLKDivider = RCC_SYSCLK_DIV1;
   RCC_ClkInitStruct.APB1CLKDivider = RCC_HCLK_DIV4;
-  RCC_ClkInitStruct.APB2CLKDivider = RCC_HCLK_DIV2;
+  RCC_ClkInitStruct.APB2CLKDivider = RCC_HCLK_DIV4;
 
   if (HAL_RCC_ClockConfig(&RCC_ClkInitStruct, FLASH_LATENCY_5) != HAL_OK)
   {
@@ -265,7 +284,7 @@ static void MX_ADC1_Init(void)
   /** Configure the global features of the ADC (Clock, Resolution, Data Alignment and number of conversion)
   */
   hadc1.Instance = ADC1;
-  hadc1.Init.ClockPrescaler = ADC_CLOCK_SYNC_PCLK_DIV4;
+  hadc1.Init.ClockPrescaler = ADC_CLOCK_SYNC_PCLK_DIV2;
   hadc1.Init.Resolution = ADC_RESOLUTION_12B;
   hadc1.Init.ScanConvMode = DISABLE;
   hadc1.Init.ContinuousConvMode = DISABLE;
@@ -305,7 +324,12 @@ static void MX_CAN1_Init(void)
 {
 
   /* USER CODE BEGIN CAN1_Init 0 */
-
+	// TODO Сделать конфигурацию CAN
+  if (CAN_Bus_Init(&can_config) != HAL_OK) {
+	  Error_Handler();
+  }
+  return;
+#if 0
   /* USER CODE END CAN1_Init 0 */
 
   /* USER CODE BEGIN CAN1_Init 1 */
@@ -328,7 +352,7 @@ static void MX_CAN1_Init(void)
     Error_Handler();
   }
   /* USER CODE BEGIN CAN1_Init 2 */
-
+#endif
   /* USER CODE END CAN1_Init 2 */
 
 }
@@ -788,7 +812,12 @@ static void MX_UART4_Init(void)
 {
 
   /* USER CODE BEGIN UART4_Init 0 */
-
+	// TODO Сделать инициализацию полей rs485 из конфигурации
+	if (RS485_Init(&rs485) != HAL_OK){
+		Error_Handler();
+	}
+	return;
+#if 0
   /* USER CODE END UART4_Init 0 */
 
   /* USER CODE BEGIN UART4_Init 1 */
@@ -807,7 +836,7 @@ static void MX_UART4_Init(void)
     Error_Handler();
   }
   /* USER CODE BEGIN UART4_Init 2 */
-
+#endif
   /* USER CODE END UART4_Init 2 */
 
 }

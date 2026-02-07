@@ -31,7 +31,8 @@ extern "C" {
 
 /* Private includes ----------------------------------------------------------*/
 /* USER CODE BEGIN Includes */
-
+#include "RS485.h"
+#include "CAN.h"
 /* USER CODE END Includes */
 
 /* Exported types ------------------------------------------------------------*/

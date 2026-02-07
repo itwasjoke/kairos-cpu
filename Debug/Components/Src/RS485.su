@@ -1,0 +1,5 @@
+../Components/Src/RS485.c:6:19:RS485_Init	16	static
+../Components/Src/RS485.c:34:12:RS485_Transmit_DMA	32	static
+../Components/Src/RS485.c:53:12:RS485_Receive_DMA	24	static
+../Components/Src/RS485.c:64:6:HAL_UART_TxCpltCallback	16	static
+../Components/Src/RS485.c:73:6:HAL_UART_RxCpltCallback	16	static
