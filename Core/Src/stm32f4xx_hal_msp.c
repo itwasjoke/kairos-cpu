@@ -23,6 +23,9 @@
 /* USER CODE BEGIN Includes */
 
 /* USER CODE END Includes */
+extern DMA_HandleTypeDef hdma_uart4_rx;
+
+extern DMA_HandleTypeDef hdma_uart4_tx;
 
 /* Private typedef -----------------------------------------------------------*/
 /* USER CODE BEGIN TD */
@@ -73,6 +76,8 @@ void HAL_MspInit(void)
   __HAL_RCC_PWR_CLK_ENABLE();
 
   /* System interrupt init*/
+  /* PendSV_IRQn interrupt configuration */
+  HAL_NVIC_SetPriority(PendSV_IRQn, 15, 0);
 
   /* USER CODE BEGIN MspInit 1 */
 
@@ -184,6 +189,15 @@ void HAL_CAN_MspInit(CAN_HandleTypeDef* hcan)
     GPIO_InitStruct.Alternate = GPIO_AF9_CAN1;
     HAL_GPIO_Init(GPIOB, &GPIO_InitStruct);
 
+    /* CAN1 interrupt Init */
+    HAL_NVIC_SetPriority(CAN1_TX_IRQn, 5, 0);
+    HAL_NVIC_EnableIRQ(CAN1_TX_IRQn);
+    HAL_NVIC_SetPriority(CAN1_RX0_IRQn, 5, 0);
+    HAL_NVIC_EnableIRQ(CAN1_RX0_IRQn);
+    HAL_NVIC_SetPriority(CAN1_RX1_IRQn, 5, 0);
+    HAL_NVIC_EnableIRQ(CAN1_RX1_IRQn);
+    HAL_NVIC_SetPriority(CAN1_SCE_IRQn, 5, 0);
+    HAL_NVIC_EnableIRQ(CAN1_SCE_IRQn);
     /* USER CODE BEGIN CAN1_MspInit 1 */
 
     /* USER CODE END CAN1_MspInit 1 */
@@ -214,6 +228,11 @@ void HAL_CAN_MspDeInit(CAN_HandleTypeDef* hcan)
     */
     HAL_GPIO_DeInit(GPIOB, GPIO_PIN_8|GPIO_PIN_9);
 
+    /* CAN1 interrupt DeInit */
+    HAL_NVIC_DisableIRQ(CAN1_TX_IRQn);
+    HAL_NVIC_DisableIRQ(CAN1_RX0_IRQn);
+    HAL_NVIC_DisableIRQ(CAN1_RX1_IRQn);
+    HAL_NVIC_DisableIRQ(CAN1_SCE_IRQn);
     /* USER CODE BEGIN CAN1_MspDeInit 1 */
 
     /* USER CODE END CAN1_MspDeInit 1 */
@@ -248,6 +267,9 @@ void HAL_DAC_MspInit(DAC_HandleTypeDef* hdac)
     GPIO_InitStruct.Pull = GPIO_NOPULL;
     HAL_GPIO_Init(GPIOA, &GPIO_InitStruct);
 
+    /* DAC interrupt Init */
+    HAL_NVIC_SetPriority(TIM6_DAC_IRQn, 15, 0);
+    HAL_NVIC_EnableIRQ(TIM6_DAC_IRQn);
     /* USER CODE BEGIN DAC_MspInit 1 */
 
     /* USER CODE END DAC_MspInit 1 */
@@ -278,6 +300,8 @@ void HAL_DAC_MspDeInit(DAC_HandleTypeDef* hdac)
     */
     HAL_GPIO_DeInit(GPIOA, AOUT0_Pin|AOUT1_Pin);
 
+    /* DAC interrupt DeInit */
+    HAL_NVIC_DisableIRQ(TIM6_DAC_IRQn);
     /* USER CODE BEGIN DAC_MspDeInit 1 */
 
     /* USER CODE END DAC_MspDeInit 1 */
@@ -497,12 +521,12 @@ void HAL_TIM_Base_MspInit(TIM_HandleTypeDef* htim_base)
     /**TIM2 GPIO Configuration
     PA15     ------> TIM2_CH1
     */
-    GPIO_InitStruct.Pin = DIN1_Pin;
+    GPIO_InitStruct.Pin = GPIO_PIN_15;
     GPIO_InitStruct.Mode = GPIO_MODE_AF_PP;
     GPIO_InitStruct.Pull = GPIO_NOPULL;
     GPIO_InitStruct.Speed = GPIO_SPEED_FREQ_LOW;
     GPIO_InitStruct.Alternate = GPIO_AF1_TIM2;
-    HAL_GPIO_Init(DIN1_GPIO_Port, &GPIO_InitStruct);
+    HAL_GPIO_Init(GPIOA, &GPIO_InitStruct);
 
     /* USER CODE BEGIN TIM2_MspInit 1 */
 
@@ -676,7 +700,7 @@ void HAL_TIM_Base_MspDeInit(TIM_HandleTypeDef* htim_base)
     /**TIM2 GPIO Configuration
     PA15     ------> TIM2_CH1
     */
-    HAL_GPIO_DeInit(DIN1_GPIO_Port, DIN1_Pin);
+    HAL_GPIO_DeInit(GPIOA, GPIO_PIN_15);
 
     /* USER CODE BEGIN TIM2_MspDeInit 1 */
 
@@ -781,6 +805,46 @@ void HAL_UART_MspInit(UART_HandleTypeDef* huart)
     GPIO_InitStruct.Alternate = GPIO_AF8_UART4;
     HAL_GPIO_Init(GPIOC, &GPIO_InitStruct);
 
+    /* UART4 DMA Init */
+    /* UART4_RX Init */
+    hdma_uart4_rx.Instance = DMA1_Stream2;
+    hdma_uart4_rx.Init.Channel = DMA_CHANNEL_4;
+    hdma_uart4_rx.Init.Direction = DMA_PERIPH_TO_MEMORY;
+    hdma_uart4_rx.Init.PeriphInc = DMA_PINC_DISABLE;
+    hdma_uart4_rx.Init.MemInc = DMA_MINC_ENABLE;
+    hdma_uart4_rx.Init.PeriphDataAlignment = DMA_PDATAALIGN_BYTE;
+    hdma_uart4_rx.Init.MemDataAlignment = DMA_MDATAALIGN_BYTE;
+    hdma_uart4_rx.Init.Mode = DMA_NORMAL;
+    hdma_uart4_rx.Init.Priority = DMA_PRIORITY_LOW;
+    hdma_uart4_rx.Init.FIFOMode = DMA_FIFOMODE_DISABLE;
+    if (HAL_DMA_Init(&hdma_uart4_rx) != HAL_OK)
+    {
+      Error_Handler();
+    }
+
+    __HAL_LINKDMA(huart,hdmarx,hdma_uart4_rx);
+
+    /* UART4_TX Init */
+    hdma_uart4_tx.Instance = DMA1_Stream4;
+    hdma_uart4_tx.Init.Channel = DMA_CHANNEL_4;
+    hdma_uart4_tx.Init.Direction = DMA_MEMORY_TO_PERIPH;
+    hdma_uart4_tx.Init.PeriphInc = DMA_PINC_DISABLE;
+    hdma_uart4_tx.Init.MemInc = DMA_MINC_ENABLE;
+    hdma_uart4_tx.Init.PeriphDataAlignment = DMA_PDATAALIGN_BYTE;
+    hdma_uart4_tx.Init.MemDataAlignment = DMA_MDATAALIGN_BYTE;
+    hdma_uart4_tx.Init.Mode = DMA_NORMAL;
+    hdma_uart4_tx.Init.Priority = DMA_PRIORITY_LOW;
+    hdma_uart4_tx.Init.FIFOMode = DMA_FIFOMODE_DISABLE;
+    if (HAL_DMA_Init(&hdma_uart4_tx) != HAL_OK)
+    {
+      Error_Handler();
+    }
+
+    __HAL_LINKDMA(huart,hdmatx,hdma_uart4_tx);
+
+    /* UART4 interrupt Init */
+    HAL_NVIC_SetPriority(UART4_IRQn, 5, 0);
+    HAL_NVIC_EnableIRQ(UART4_IRQn);
     /* USER CODE BEGIN UART4_MspInit 1 */
 
     /* USER CODE END UART4_MspInit 1 */
@@ -811,6 +875,12 @@ void HAL_UART_MspDeInit(UART_HandleTypeDef* huart)
     */
     HAL_GPIO_DeInit(GPIOC, GPIO_PIN_10|GPIO_PIN_11);
 
+    /* UART4 DMA DeInit */
+    HAL_DMA_DeInit(huart->hdmarx);
+    HAL_DMA_DeInit(huart->hdmatx);
+
+    /* UART4 interrupt DeInit */
+    HAL_NVIC_DisableIRQ(UART4_IRQn);
     /* USER CODE BEGIN UART4_MspDeInit 1 */
 
     /* USER CODE END UART4_MspDeInit 1 */

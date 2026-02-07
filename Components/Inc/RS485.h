@@ -1,13 +1,28 @@
-/*
- * RS485.h
- *
- *  Created on: Feb 6, 2026
- *      Author: itwasjoke
- */
+#ifndef RS485_H
+#define RS485_H
 
-#ifndef RS485_H_
-#define RS485_H_
+#include "stm32f4xx_hal.h"
+#include "cmsis_os2.h"
 
+typedef struct {
+    UART_HandleTypeDef *huart;
+    GPIO_TypeDef *de_port;
+    uint16_t de_pin;
+    osSemaphoreId_t txSem;
+    osSemaphoreId_t rxSem;
+} RS485_Handle;
 
+// Инициализация (создание семафоров)
+void RS485_Init(RS485_Handle *handle);
 
-#endif /* RS485_H_ */
+// Передача через DMA + Семафор
+osStatus_t RS485_Transmit_DMA(RS485_Handle *handle, uint8_t *pData, uint16_t size, uint32_t timeout);
+
+// Прием через DMA + Семафор
+osStatus_t RS485_Receive_DMA(RS485_Handle *handle, uint8_t *pData, uint16_t size, uint32_t timeout);
+
+// Коллбэки (их нужно вызвать в main.c или stm32f4xx_it.c)
+void RS485_TxCpltCallback(UART_HandleTypeDef *huart);
+void RS485_RxCpltCallback(UART_HandleTypeDef *huart);
+
+#endif
