@@ -82,6 +82,8 @@ void HAL_CAN_RxFifo0MsgPendingCallback(CAN_HandleTypeDef *hcan) {
 
 		msg.dlc = header.DLC;
 
+		Led_Blink(LED_CAN_RX, 100);
+
     // Кладём в очередь. Из ISR используем NULL для таймаута
 		osMessageQueuePut(g_can_config->rxQueue, &msg, 0, 0);
 	}

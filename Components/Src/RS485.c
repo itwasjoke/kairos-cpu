@@ -65,6 +65,7 @@ void HAL_UART_TxCpltCallback(UART_HandleTypeDef *huart) {
 	if (huart == g_handle->huart) {
 			// Выключаем DE немедленно, как только ушел последний бит
 		HAL_GPIO_WritePin(g_handle->de_port, g_handle->de_pin, GPIO_PIN_RESET);
+		Led_Blink(LED_RS_TX, 100);
 		osSemaphoreRelease(g_handle->txSem);
 	}
 }
@@ -72,6 +73,7 @@ void HAL_UART_TxCpltCallback(UART_HandleTypeDef *huart) {
 // Вызывается HAL по окончании приема
 void HAL_UART_RxCpltCallback(UART_HandleTypeDef *huart) {
 	if (huart == g_handle->huart) {
+		Led_Blink(LED_RS_RX, 100);
 		osSemaphoreRelease(g_handle->rxSem);
 	}
 }
