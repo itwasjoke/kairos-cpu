@@ -33,6 +33,7 @@ extern "C" {
 /* USER CODE BEGIN Includes */
 #include "RS485.h"
 #include "CAN.h"
+#include "analog.h"
 /* USER CODE END Includes */
 
 /* Exported types ------------------------------------------------------------*/
@@ -98,6 +99,8 @@ void Error_Handler(void);
 #define AIN_LED3_GPIO_Port GPIOC
 #define DIN0_Pin GPIO_PIN_8
 #define DIN0_GPIO_Port GPIOA
+#define DIN1_Pin GPIO_PIN_15
+#define DIN1_GPIO_Port GPIOA
 #define RS485_DE_Pin GPIO_PIN_12
 #define RS485_DE_GPIO_Port GPIOC
 #define DOUT0_Pin GPIO_PIN_0

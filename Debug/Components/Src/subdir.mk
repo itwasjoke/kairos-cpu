@@ -7,8 +7,10 @@
 C_SRCS += \
 ../Components/Src/CAN.c \
 ../Components/Src/Config.c \
+../Components/Src/Discrete.c \
 ../Components/Src/Ethernet.c \
 ../Components/Src/RS485.c \
+../Components/Src/analog.c \
 ../Components/Src/eeprom.c \
 ../Components/Src/i2c.c \
 ../Components/Src/kairos.c \
@@ -17,8 +19,10 @@ C_SRCS += \
 OBJS += \
 ./Components/Src/CAN.o \
 ./Components/Src/Config.o \
+./Components/Src/Discrete.o \
 ./Components/Src/Ethernet.o \
 ./Components/Src/RS485.o \
+./Components/Src/analog.o \
 ./Components/Src/eeprom.o \
 ./Components/Src/i2c.o \
 ./Components/Src/kairos.o \
@@ -27,8 +31,10 @@ OBJS += \
 C_DEPS += \
 ./Components/Src/CAN.d \
 ./Components/Src/Config.d \
+./Components/Src/Discrete.d \
 ./Components/Src/Ethernet.d \
 ./Components/Src/RS485.d \
+./Components/Src/analog.d \
 ./Components/Src/eeprom.d \
 ./Components/Src/i2c.d \
 ./Components/Src/kairos.d \
@@ -42,7 +48,7 @@ Components/Src/%.o Components/Src/%.su Components/Src/%.cyclo: ../Components/Src
 clean: clean-Components-2f-Src
 
 clean-Components-2f-Src:
-	-$(RM) ./Components/Src/CAN.cyclo ./Components/Src/CAN.d ./Components/Src/CAN.o ./Components/Src/CAN.su ./Components/Src/Config.cyclo ./Components/Src/Config.d ./Components/Src/Config.o ./Components/Src/Config.su ./Components/Src/Ethernet.cyclo ./Components/Src/Ethernet.d ./Components/Src/Ethernet.o ./Components/Src/Ethernet.su ./Components/Src/RS485.cyclo ./Components/Src/RS485.d ./Components/Src/RS485.o ./Components/Src/RS485.su ./Components/Src/eeprom.cyclo ./Components/Src/eeprom.d ./Components/Src/eeprom.o ./Components/Src/eeprom.su ./Components/Src/i2c.cyclo ./Components/Src/i2c.d ./Components/Src/i2c.o ./Components/Src/i2c.su ./Components/Src/kairos.cyclo ./Components/Src/kairos.d ./Components/Src/kairos.o ./Components/Src/kairos.su ./Components/Src/led.cyclo ./Components/Src/led.d ./Components/Src/led.o ./Components/Src/led.su
+	-$(RM) ./Components/Src/CAN.cyclo ./Components/Src/CAN.d ./Components/Src/CAN.o ./Components/Src/CAN.su ./Components/Src/Config.cyclo ./Components/Src/Config.d ./Components/Src/Config.o ./Components/Src/Config.su ./Components/Src/Discrete.cyclo ./Components/Src/Discrete.d ./Components/Src/Discrete.o ./Components/Src/Discrete.su ./Components/Src/Ethernet.cyclo ./Components/Src/Ethernet.d ./Components/Src/Ethernet.o ./Components/Src/Ethernet.su ./Components/Src/RS485.cyclo ./Components/Src/RS485.d ./Components/Src/RS485.o ./Components/Src/RS485.su ./Components/Src/analog.cyclo ./Components/Src/analog.d ./Components/Src/analog.o ./Components/Src/analog.su ./Components/Src/eeprom.cyclo ./Components/Src/eeprom.d ./Components/Src/eeprom.o ./Components/Src/eeprom.su ./Components/Src/i2c.cyclo ./Components/Src/i2c.d ./Components/Src/i2c.o ./Components/Src/i2c.su ./Components/Src/kairos.cyclo ./Components/Src/kairos.d ./Components/Src/kairos.o ./Components/Src/kairos.su ./Components/Src/led.cyclo ./Components/Src/led.d ./Components/Src/led.o ./Components/Src/led.su
 
 .PHONY: clean-Components-2f-Src
 

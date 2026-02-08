@@ -37,7 +37,12 @@ Components/Src/RS485.o: ../Components/Src/RS485.c \
  ../Drivers/STM32F4xx_HAL_Driver/Inc/stm32f4xx_hal_tim.h \
  ../Drivers/STM32F4xx_HAL_Driver/Inc/stm32f4xx_hal_tim_ex.h \
  ../Drivers/STM32F4xx_HAL_Driver/Inc/stm32f4xx_hal_uart.h \
- ../Middlewares/Third_Party/FreeRTOS/Source/CMSIS_RTOS_V2/cmsis_os2.h
+ ../Middlewares/Third_Party/FreeRTOS/Source/CMSIS_RTOS_V2/cmsis_os2.h \
+ /Users/itwasjoke/Desktop/Kairos/Kairos\ CPU/kairos/Components/Inc/led.h \
+ ../Core/Inc/main.h \
+ /Users/itwasjoke/Desktop/Kairos/Kairos\ CPU/kairos/Components/Inc/RS485.h \
+ /Users/itwasjoke/Desktop/Kairos/Kairos\ CPU/kairos/Components/Inc/CAN.h \
+ /Users/itwasjoke/Desktop/Kairos/Kairos\ CPU/kairos/Components/Inc/analog.h
 /Users/itwasjoke/Desktop/Kairos/Kairos\ CPU/kairos/Components/Inc/rs485.h:
 ../Drivers/STM32F4xx_HAL_Driver/Inc/stm32f4xx_hal.h:
 ../Core/Inc/stm32f4xx_hal_conf.h:
@@ -77,3 +82,8 @@ Components/Src/RS485.o: ../Components/Src/RS485.c \
 ../Drivers/STM32F4xx_HAL_Driver/Inc/stm32f4xx_hal_tim_ex.h:
 ../Drivers/STM32F4xx_HAL_Driver/Inc/stm32f4xx_hal_uart.h:
 ../Middlewares/Third_Party/FreeRTOS/Source/CMSIS_RTOS_V2/cmsis_os2.h:
+/Users/itwasjoke/Desktop/Kairos/Kairos\ CPU/kairos/Components/Inc/led.h:
+../Core/Inc/main.h:
+/Users/itwasjoke/Desktop/Kairos/Kairos\ CPU/kairos/Components/Inc/RS485.h:
+/Users/itwasjoke/Desktop/Kairos/Kairos\ CPU/kairos/Components/Inc/CAN.h:
+/Users/itwasjoke/Desktop/Kairos/Kairos\ CPU/kairos/Components/Inc/analog.h:

@@ -1,0 +1,4 @@
+../Components/Src/analog.c:5:6:Analog_Init	1
+../Components/Src/analog.c:15:14:process_channel	2
+../Components/Src/analog.c:34:6:Analog_GetValues	3
+../Components/Src/analog.c:55:6:Analog_SetOutput	6

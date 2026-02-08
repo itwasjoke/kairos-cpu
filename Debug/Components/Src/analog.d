@@ -1,5 +1,5 @@
-Components/Src/led.o: ../Components/Src/led.c \
- /Users/itwasjoke/Desktop/Kairos/Kairos\ CPU/kairos/Components/Inc/led.h \
+Components/Src/analog.o: ../Components/Src/analog.c \
+ /Users/itwasjoke/Desktop/Kairos/Kairos\ CPU/kairos/Components/Inc/analog.h \
  ../Drivers/STM32F4xx_HAL_Driver/Inc/stm32f4xx_hal.h \
  ../Core/Inc/stm32f4xx_hal_conf.h \
  ../Drivers/STM32F4xx_HAL_Driver/Inc/stm32f4xx_hal_rcc.h \
@@ -37,13 +37,12 @@ Components/Src/led.o: ../Components/Src/led.c \
  ../Drivers/STM32F4xx_HAL_Driver/Inc/stm32f4xx_hal_tim.h \
  ../Drivers/STM32F4xx_HAL_Driver/Inc/stm32f4xx_hal_tim_ex.h \
  ../Drivers/STM32F4xx_HAL_Driver/Inc/stm32f4xx_hal_uart.h \
+ /Users/itwasjoke/Desktop/Kairos/Kairos\ CPU/kairos/Components/Inc/led.h \
  ../Middlewares/Third_Party/FreeRTOS/Source/CMSIS_RTOS_V2/cmsis_os2.h \
  ../Core/Inc/main.h \
  /Users/itwasjoke/Desktop/Kairos/Kairos\ CPU/kairos/Components/Inc/RS485.h \
- /Users/itwasjoke/Desktop/Kairos/Kairos\ CPU/kairos/Components/Inc/led.h \
- /Users/itwasjoke/Desktop/Kairos/Kairos\ CPU/kairos/Components/Inc/CAN.h \
- /Users/itwasjoke/Desktop/Kairos/Kairos\ CPU/kairos/Components/Inc/analog.h
-/Users/itwasjoke/Desktop/Kairos/Kairos\ CPU/kairos/Components/Inc/led.h:
+ /Users/itwasjoke/Desktop/Kairos/Kairos\ CPU/kairos/Components/Inc/CAN.h
+/Users/itwasjoke/Desktop/Kairos/Kairos\ CPU/kairos/Components/Inc/analog.h:
 ../Drivers/STM32F4xx_HAL_Driver/Inc/stm32f4xx_hal.h:
 ../Core/Inc/stm32f4xx_hal_conf.h:
 ../Drivers/STM32F4xx_HAL_Driver/Inc/stm32f4xx_hal_rcc.h:
@@ -81,9 +80,8 @@ Components/Src/led.o: ../Components/Src/led.c \
 ../Drivers/STM32F4xx_HAL_Driver/Inc/stm32f4xx_hal_tim.h:
 ../Drivers/STM32F4xx_HAL_Driver/Inc/stm32f4xx_hal_tim_ex.h:
 ../Drivers/STM32F4xx_HAL_Driver/Inc/stm32f4xx_hal_uart.h:
+/Users/itwasjoke/Desktop/Kairos/Kairos\ CPU/kairos/Components/Inc/led.h:
 ../Middlewares/Third_Party/FreeRTOS/Source/CMSIS_RTOS_V2/cmsis_os2.h:
 ../Core/Inc/main.h:
 /Users/itwasjoke/Desktop/Kairos/Kairos\ CPU/kairos/Components/Inc/RS485.h:
-/Users/itwasjoke/Desktop/Kairos/Kairos\ CPU/kairos/Components/Inc/led.h:
 /Users/itwasjoke/Desktop/Kairos/Kairos\ CPU/kairos/Components/Inc/CAN.h:
-/Users/itwasjoke/Desktop/Kairos/Kairos\ CPU/kairos/Components/Inc/analog.h:

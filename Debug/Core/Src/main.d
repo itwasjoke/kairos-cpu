@@ -38,7 +38,9 @@ Core/Src/main.o: ../Core/Src/main.c ../Core/Inc/main.h \
  ../Drivers/STM32F4xx_HAL_Driver/Inc/stm32f4xx_hal_uart.h \
  /Users/itwasjoke/Desktop/Kairos/Kairos\ CPU/kairos/Components/Inc/RS485.h \
  ../Middlewares/Third_Party/FreeRTOS/Source/CMSIS_RTOS_V2/cmsis_os2.h \
+ /Users/itwasjoke/Desktop/Kairos/Kairos\ CPU/kairos/Components/Inc/led.h \
  /Users/itwasjoke/Desktop/Kairos/Kairos\ CPU/kairos/Components/Inc/CAN.h \
+ /Users/itwasjoke/Desktop/Kairos/Kairos\ CPU/kairos/Components/Inc/analog.h \
  ../Middlewares/Third_Party/FreeRTOS/Source/CMSIS_RTOS_V2/cmsis_os.h \
  ../Middlewares/Third_Party/FreeRTOS/Source/include/FreeRTOS.h \
  ../Core/Inc/FreeRTOSConfig.h \
@@ -90,7 +92,9 @@ Core/Src/main.o: ../Core/Src/main.c ../Core/Inc/main.h \
 ../Drivers/STM32F4xx_HAL_Driver/Inc/stm32f4xx_hal_uart.h:
 /Users/itwasjoke/Desktop/Kairos/Kairos\ CPU/kairos/Components/Inc/RS485.h:
 ../Middlewares/Third_Party/FreeRTOS/Source/CMSIS_RTOS_V2/cmsis_os2.h:
+/Users/itwasjoke/Desktop/Kairos/Kairos\ CPU/kairos/Components/Inc/led.h:
 /Users/itwasjoke/Desktop/Kairos/Kairos\ CPU/kairos/Components/Inc/CAN.h:
+/Users/itwasjoke/Desktop/Kairos/Kairos\ CPU/kairos/Components/Inc/analog.h:
 ../Middlewares/Third_Party/FreeRTOS/Source/CMSIS_RTOS_V2/cmsis_os.h:
 ../Middlewares/Third_Party/FreeRTOS/Source/include/FreeRTOS.h:
 ../Core/Inc/FreeRTOSConfig.h:
