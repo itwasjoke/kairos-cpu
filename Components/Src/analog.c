@@ -22,7 +22,6 @@ static float process_channel(uint16_t raw_val, SensorType_t type, uint8_t led_nu
   if (type == TYPE_VOLTAGE_0_10V) {
     return raw_norm * 10.0f;
   } else {
-    // 0..20мА (или 4..20мА, если подставите формулу из прошлого ответа)
     return raw_norm * 20.0f;
   }
 }
