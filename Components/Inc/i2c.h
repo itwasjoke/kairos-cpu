@@ -8,6 +8,11 @@
 #ifndef I2C_H_
 #define I2C_H_
 
+#include "stm32f4xx_hal.h"
+#include "FreeRTOS.h"
+#include "task.h"
+#include "cmsis_os2.h"
+
 // Таймаут для операций I2C в мс
 #define I2C_TIMEOUT          4
 

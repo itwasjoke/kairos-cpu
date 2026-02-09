@@ -1,4 +1,0 @@
-../Components/Src/led.c:25:6:LedService_Init	1
-../Components/Src/led.c:35:6:Led_Blink	2
-../Components/Src/led.c:42:6:Led_PWM_Set	8
-../Components/Src/led.c:56:6:LedServiceTask	4
