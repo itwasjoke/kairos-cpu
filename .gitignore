@@ -1,5 +1,6 @@
 # --- Бинарные файлы и отчеты сборки ---
 Debug/
+Debug
 Release/
 bin/
 obj/
