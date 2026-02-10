@@ -10,15 +10,13 @@
 
 typedef enum {
     VAR_TYPE_NONE  = 0,
-    VAR_TYPE_INT32  = 1, // uint32_t
-		VAR_TYPE_INT16   = 2, // uint16_t
-    VAR_TYPE_FLOAT = 3, // float
-    VAR_TYPE_BOOL  = 4  // uint8_t
+    VAR_TYPE_INT   = 1, // int
+    VAR_TYPE_FLOAT = 2, // float
+    VAR_TYPE_BOOL  = 3  // uint8_t
 } VarType_e;
 
 typedef union {
-    uint32_t  as_int32;
-    uint16_t as_int16;
+    int  as_int;
     uint8_t  as_bool;
     float    as_float;
 } VarValue_u;
@@ -36,14 +34,12 @@ typedef struct __attribute__((packed)) {
 
 typedef struct {
     // Геттеры
-    int32_t (*get_int32)(uint16_t id);
-    int16_t (*get_int16)(uint16_t id);
+    int (*get_int)(uint16_t id);
     float   (*get_float)(uint16_t id);
     uint8_t  (*get_bool)(uint16_t id);
 
     // Сеттеры
-    void    (*set_int32)(uint16_t id, int32_t val);
-    void    (*set_int16)(uint16_t id, int16_t val);
+    void    (*set_int)(uint16_t id, int val);
     void    (*set_float)(uint16_t id, float val);
     void    (*set_bool)(uint16_t id, uint8_t val);
 } SystemAPI_t;
