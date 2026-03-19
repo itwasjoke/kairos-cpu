@@ -31,12 +31,7 @@ extern "C" {
 
 /* Private includes ----------------------------------------------------------*/
 /* USER CODE BEGIN Includes */
-#include "RS485.h"
-#include "CAN.h"
-#include "analog.h"
-#include "Discrete.h"
-#include "eeprom.h"
-#include "app_tcp.h"
+#include "kairos.h"
 /* USER CODE END Includes */
 
 /* Exported types ------------------------------------------------------------*/

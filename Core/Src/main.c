@@ -69,6 +69,8 @@ const osThreadAttr_t defaultTask_attributes = {
   .stack_size = 128 * 4,
   .priority = (osPriority_t) osPriorityNormal,
 };
+
+/* USER CODE BEGIN PV */
 i2c_config_t i2c_config;
 eeprom_t eeprom;
 KairosConfig_t kairos_config;
@@ -76,7 +78,6 @@ ProjectVars_t project_vars;
 PluginEntry_t user_plugin;
 uint8_t code_correct = 0;
 
-/* USER CODE BEGIN PV */
 RS485_Handle rs485 = {
 	.baud_rate = 115200,
 	.instance = UART4,
@@ -216,16 +217,14 @@ int main(void)
   };
 
   i2cMutexHandle = osMutexNew(&i2cMutex_attributes);
-  i2c_config.i2c_handle = &hi2c1;
-  i2c_config.i2c_mutex = i2cMutexHandle;
+  i2c_init(&i2c_config, &hi2c1, i2cMutexHandle);
 
-  eeprom_init(&eeprom, &i2c_config, 0, 8);
+  eeprom_init(&eeprom, &i2c_config, EEPROM_DEVICE_ADDR, I2C_MEMADD_SIZE_16BIT);
 
   HAL_StatusTypeDef statusConfig = getConfig(&eeprom, &kairos_config);
-
   HAL_StatusTypeDef statusVars = getProjectVars(&eeprom, &project_vars);
 
-  if (statusConfig == HAL_OK && statusVars == HAL_OK) {
+  if (statusConfig == HAL_OK && statusVars == HAL_OK && kairos_config.config_version != 0xFFFFFFFF) {
 
 		analog_handle.channel_types_adc[0] = kairos_config.gpio_config.analog_types[0];
 		analog_handle.channel_types_adc[1] = kairos_config.gpio_config.analog_types[1];
@@ -278,7 +277,8 @@ int main(void)
   defaultTaskHandle = osThreadNew(StartDefaultTask, NULL, &defaultTask_attributes);
 
   /* USER CODE BEGIN RTOS_THREADS */
-  /* add threads, ... */
+  LedService_Init();
+  LedTask = osThreadNew(LedServiceTask, NULL, &LedTask_attributes);
   /* USER CODE END RTOS_THREADS */
 
   /* USER CODE BEGIN RTOS_EVENTS */
@@ -997,7 +997,8 @@ void StartDefaultTask(void *argument)
   {
   	// проверка на наличие конфигурации
   	if (kairos_config.config_version == 0 || kairos_config.config_version == 0xFFFFFFFF){
-  		osDelay(100);
+  		Led_Blink(LED_1, 50);
+  		osDelay(500);
   		continue;
   	}
   	// Чтение данных с входов
