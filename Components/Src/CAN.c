@@ -33,7 +33,7 @@ HAL_StatusTypeDef CAN_Bus_Init(CAN_Config_t *config) {
   }
 
   if (config->rxQueue == NULL) {
-    config->rxQueue = osMessageQueueNew(10, sizeof(CAN_Message_t), NULL);
+    config->rxQueue = osMessageQueueNew(10, sizeof(CANr_Message_t), NULL);
   }
 
   CAN_FilterTypeDef filter;
@@ -61,14 +61,14 @@ HAL_StatusTypeDef CAN_Bus_Init(CAN_Config_t *config) {
   return HAL_OK;
 }
 
-osStatus_t CAN_Bus_Read(CAN_Config_t *config, CAN_Message_t *msg, uint32_t timeout) {
+osStatus_t CAN_Bus_Read(CAN_Config_t *config, CANr_Message_t *msg, uint32_t timeout) {
 	return osMessageQueueGet(config->rxQueue, msg, NULL, timeout);
 }
 
 // Прерывание: вызывается при получении нового сообщения
 void HAL_CAN_RxFifo0MsgPendingCallback(CAN_HandleTypeDef *hcan) {
 	CAN_RxHeaderTypeDef header;
-	CAN_Message_t msg;
+	CANr_Message_t msg;
 
 	if (HAL_CAN_GetRxMessage(hcan, CAN_RX_FIFO0, &header, msg.data) == HAL_OK) {
         // Определяем ID в зависимости от типа

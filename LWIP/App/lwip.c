@@ -29,7 +29,7 @@
 #include <string.h>
 
 /* USER CODE BEGIN 0 */
-
+#include "Config.h"
 /* USER CODE END 0 */
 /* Private function prototypes -----------------------------------------------*/
 static void ethernet_link_status_updated(struct netif *netif);
@@ -77,6 +77,13 @@ void MX_LWIP_Init(void)
   GATEWAY_ADDRESS[3] = 222;
 
 /* USER CODE BEGIN IP_ADDRESSES */
+  if (kairos_config.config_version != 0 && kairos_config.config_version != 0xFFFFFFFF){
+  	for (uint8_t i = 0; i<4;i++){
+  		IP_ADDRESS[i] = (uint8_t)((kairos_config.main_config.ip >> (24-i*8)) & 0xFF);
+  		NETMASK_ADDRESS[i] = (uint8_t)((kairos_config.main_config.mask >> (24-i*8)) & 0xFF);
+  		GATEWAY_ADDRESS[i] = (uint8_t)((kairos_config.main_config.gateway >> (24-i*8)) & 0xFF);
+  	}
+  }
 /* USER CODE END IP_ADDRESSES */
 
   /* Initialize the LwIP stack with RTOS */

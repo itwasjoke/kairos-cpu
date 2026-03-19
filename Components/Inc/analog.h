@@ -3,11 +3,7 @@
 
 #include "stm32f4xx_hal.h"
 #include "led.h"
-
-typedef enum {
-  TYPE_VOLTAGE_0_10V,
-  TYPE_CURRENT_4_20MA
-} SensorType_t;
+#include "Config.h"
 
 typedef struct {
   ADC_HandleTypeDef *hadc;
@@ -19,8 +15,8 @@ typedef struct {
 
 void Analog_Init(Analog_Handle_t *handle);
 
-void Analog_GetValues(float *output_array);
+void Analog_GetValues(ProjectVars_t *project_vars);
 
-void Analog_SetOutput(uint8_t channel_idx, float value);
+void Analog_SetOutput(ProjectVars_t *project_vars);
 
 #endif

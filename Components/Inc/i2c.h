@@ -12,6 +12,7 @@
 #include "FreeRTOS.h"
 #include "task.h"
 #include "cmsis_os2.h"
+#include "Config.h"
 
 // Таймаут для операций I2C в мс
 #define I2C_TIMEOUT          4

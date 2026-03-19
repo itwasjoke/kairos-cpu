@@ -5,15 +5,37 @@
 
 // --- Реализация API (Impl) ---
 
-int impl_get_int(uint16_t id) {
-    if (id >= 0 && project_vars.var_types[id] == VAR_TYPE_INT)
-        return project_vars.vars[id].as_int;
+uint8_t impl_get_8int(uint16_t id) {
+    if (id >= 0 && project_vars.var_types[id] == VAR_TYPE_INT8)
+        return project_vars.vars[id].as_uint8;
     return 0;
 }
 
-void impl_set_int(uint16_t id, int32_t val) {
-    if (id >= 0 && project_vars.var_types[id] == VAR_TYPE_INT)
-        project_vars.vars[id].as_int = val;
+void impl_set_8int(uint16_t id, uint8_t val) {
+    if (id >= 0 && project_vars.var_types[id] == VAR_TYPE_INT8)
+        project_vars.vars[id].as_uint8 = val;
+}
+
+uint16_t impl_get_16int(uint16_t id) {
+    if (id >= 0 && project_vars.var_types[id] == VAR_TYPE_INT16)
+        return project_vars.vars[id].as_uint16;
+    return 0;
+}
+
+void impl_set_16int(uint16_t id, uint16_t val) {
+    if (id >= 0 && project_vars.var_types[id] == VAR_TYPE_INT16)
+        project_vars.vars[id].as_uint16 = val;
+}
+
+uint32_t impl_get_32int(uint16_t id) {
+    if (id >= 0 && project_vars.var_types[id] == VAR_TYPE_INT32)
+        return project_vars.vars[id].as_uint32;
+    return 0;
+}
+
+void impl_set_32int(uint16_t id, uint32_t val) {
+    if (id >= 0 && project_vars.var_types[id] == VAR_TYPE_INT32)
+        project_vars.vars[id].as_uint32 = val;
 }
 
 float impl_get_float(uint16_t id) {
@@ -40,8 +62,12 @@ void impl_set_bool(uint16_t id, uint8_t val) {
 
 // Сборка таблицы API
 const SystemAPI_t api = {
-    .get_int = impl_get_int,
-    .set_int = impl_set_int,
+    .get_uint8 = impl_get_8int,
+    .set_uint8 = impl_set_8int,
+    .get_uint16 = impl_get_16int,
+    .set_uint16 = impl_set_16int,
+    .get_uint32 = impl_get_32int,
+    .set_uint32 = impl_set_32int,
     .get_float = impl_get_float,
     .set_float = impl_set_float,
 		.get_bool = impl_get_bool,

@@ -6,17 +6,25 @@
 #define USER_CODE_ADDR  0x08060000       // Начало сектора 7
 #define MAGIC_KEY       0xCAFEBABE       // Метка валидности кода
 
+#define ANALOG_ID					0
+#define DISCRETE_ID				6
+#define SETPOINT_ID 			18
+
 // --- 1. Структуры переменных ---
 
 typedef enum {
     VAR_TYPE_NONE  = 0,
-    VAR_TYPE_INT   = 1, // int
-    VAR_TYPE_FLOAT = 2, // float
-    VAR_TYPE_BOOL  = 3  // uint8_t
+    VAR_TYPE_INT8   = 1, // int
+		VAR_TYPE_INT16   = 2, // int
+		VAR_TYPE_INT32   = 3, // int
+    VAR_TYPE_FLOAT = 4, // float
+    VAR_TYPE_BOOL  = 5  // uint8_t
 } VarType_e;
 
 typedef union {
-    int  as_int;
+    uint8_t  as_uint8;
+    uint16_t  as_uint16;
+    uint32_t  as_uint32;
     uint8_t  as_bool;
     float    as_float;
 } VarValue_u;
@@ -34,12 +42,16 @@ typedef struct __attribute__((packed)) {
 
 typedef struct {
     // Геттеры
-    int (*get_int)(uint16_t id);
+    uint8_t (*get_uint8)(uint16_t id);
+    uint16_t (*get_uint16)(uint16_t id);
+    uint32_t (*get_uint32)(uint16_t id);
     float   (*get_float)(uint16_t id);
     uint8_t  (*get_bool)(uint16_t id);
 
     // Сеттеры
-    void    (*set_int)(uint16_t id, int val);
+    void    (*set_uint8)(uint16_t id, uint8_t val);
+    void    (*set_uint16)(uint16_t id, uint16_t val);
+    void    (*set_uint32)(uint16_t id, uint32_t val);
     void    (*set_float)(uint16_t id, float val);
     void    (*set_bool)(uint16_t id, uint8_t val);
 } SystemAPI_t;

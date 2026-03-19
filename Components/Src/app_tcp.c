@@ -1,6 +1,5 @@
 #include "app_tcp.h"
 #include "lwip/sockets.h"
-#include "main.h" // Для HAL_FLASH...
 #include <string.h>
 
 const osThreadAttr_t configTask_attributes = {
@@ -109,14 +108,14 @@ void ModbusTask(void *argument) {
 
         // Используем твою функцию.
         // reg_count / 2 — это количество 32-битных переменных
-        convert_to_be_fast(&project_vars.vars[start_reg / 2].as_int, &tx[9], reg_count / 2);
+        convert_to_be_fast(&project_vars.vars[start_reg / 2].as_uint32, &tx[9], reg_count / 2);
 
         tx_total = 6 + 3 + (reg_count * 2);
       }
       else if (func == 0x10) {
         // Для записи используем ту же логику __REV
         uint32_t *src32 = (uint32_t *)&rx[13];
-        uint32_t *dst32 = (uint32_t *)(((void*)&project_vars.vars[start_reg / 2].as_int));
+        uint32_t *dst32 = (uint32_t *)(((void*)&project_vars.vars[start_reg / 2].as_uint32));
 
         for (int i = 0; i < (reg_count / 2); i++) {
           dst32[i] = __REV(src32[i]);

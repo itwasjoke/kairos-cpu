@@ -10,7 +10,7 @@ typedef struct {
   uint32_t id_type;
   uint8_t dlc;
   uint8_t data[8];
-} CAN_Message_t;
+} CANr_Message_t;
 
 typedef struct {
   CAN_HandleTypeDef *hcan;
@@ -22,6 +22,6 @@ typedef struct {
 } CAN_Config_t;
 
 HAL_StatusTypeDef CAN_Bus_Init(CAN_Config_t *config);
-osStatus_t CAN_Bus_Read(CAN_Config_t *config, CAN_Message_t *msg, uint32_t timeout);
+osStatus_t CAN_Bus_Read(CAN_Config_t *config, CANr_Message_t *msg, uint32_t timeout);
 
 #endif

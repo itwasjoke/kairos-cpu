@@ -69,6 +69,13 @@ const osThreadAttr_t defaultTask_attributes = {
   .stack_size = 128 * 4,
   .priority = (osPriority_t) osPriorityNormal,
 };
+i2c_config_t i2c_config;
+eeprom_t eeprom;
+KairosConfig_t kairos_config;
+ProjectVars_t project_vars;
+PluginEntry_t user_plugin;
+uint8_t code_correct = 0;
+
 /* USER CODE BEGIN PV */
 RS485_Handle rs485 = {
 	.baud_rate = 115200,
@@ -98,6 +105,39 @@ Analog_Handle_t analog_handle = {
 		.hdac = &hdac,
 		.raw_data_adc = {0}
 };
+
+osThreadId_t LedTask;
+const osThreadAttr_t LedTask_attributes = {
+  .name = "LedTask",
+  .stack_size = 128 * 4,
+  .priority = (osPriority_t) osPriorityNormal,
+};
+
+osThreadId_t CanTask;
+const osThreadAttr_t CanTask_attributes = {
+  .name = "CanTask",
+  .stack_size = 128 * 18,
+  .priority = (osPriority_t) osPriorityNormal7,
+};
+osMutexId_t i2cMutexHandle;
+
+
+void check_user_code(){
+	// Проверка наличия кода во Flash
+	uint32_t *flash_ptr = (uint32_t*)USER_CODE_ADDR;
+
+	// Мы договорились, что первые 4 байта бинарника - это Magic Key
+	if (*flash_ptr == MAGIC_KEY) {
+			// Код начинается сразу после MagicKey (4 байта) + Size (4 байта) = смещение 8
+			uint32_t code_addr = USER_CODE_ADDR + 8;
+
+			// Бит 0 должен быть 1 для Thumb режима
+			if (!(code_addr & 1)) code_addr |= 1;
+
+			user_plugin = (PluginEntry_t)code_addr;
+			code_correct = 1;
+	}
+}
 /* USER CODE END PV */
 
 /* Private function prototypes -----------------------------------------------*/
@@ -168,21 +208,49 @@ int main(void)
   MX_TIM5_Init();
   MX_TIM2_Init();
   /* USER CODE BEGIN 2 */
+  const osMutexAttr_t i2cMutex_attributes = {
+    "i2cMutex",
+    osMutexRecursive | osMutexPrioInherit,
+    NULL,
+    0U
+  };
 
-  // TODO Сделать чтение конфигурации
+  i2cMutexHandle = osMutexNew(&i2cMutex_attributes);
+  i2c_config.i2c_handle = &hi2c1;
+  i2c_config.i2c_mutex = i2cMutexHandle;
 
-  // TODO Заполнить типы аналогов
-  Analog_Init(&analog_handle);
+  eeprom_init(&eeprom, &i2c_config, 0, 8);
 
-	// TODO Сделать конфигурацию CAN
-  if (CAN_Bus_Init(&can_config) != HAL_OK) {
-	  Error_Handler();
+  HAL_StatusTypeDef statusConfig = getConfig(&eeprom, &kairos_config);
+
+  HAL_StatusTypeDef statusVars = getProjectVars(&eeprom, &project_vars);
+
+  if (statusConfig == HAL_OK && statusVars == HAL_OK) {
+
+		analog_handle.channel_types_adc[0] = kairos_config.gpio_config.analog_types[0];
+		analog_handle.channel_types_adc[1] = kairos_config.gpio_config.analog_types[1];
+		analog_handle.channel_types_adc[2] = kairos_config.gpio_config.analog_types[2];
+		analog_handle.channel_types_adc[3] = kairos_config.gpio_config.analog_types[3];
+		analog_handle.channel_types_dac[0] = kairos_config.gpio_config.analog_types[4];
+		analog_handle.channel_types_dac[1] = kairos_config.gpio_config.analog_types[5];
+
+		can_config.baud_rate = kairos_config.gpio_config.can_speed;
+		can_config.filter_id = kairos_config.gpio_config.can_filter_id;
+		can_config.filter_mask = kairos_config.gpio_config.can_filter_mask;
+
+		rs485.baud_rate = kairos_config.gpio_config.rs_speed;
+		rs485.stop_bits = kairos_config.gpio_config.rs_stop_bits;
+
+		Analog_Init(&analog_handle);
+
+		if (CAN_Bus_Init(&can_config) != HAL_OK) {
+			Error_Handler();
+		}
+
+		if (RS485_Init(&rs485) != HAL_OK){
+			Error_Handler();
+		}
   }
-
-	// TODO Сделать инициализацию полей rs485 из конфигурации
-	if (RS485_Init(&rs485) != HAL_OK){
-		Error_Handler();
-	}
 
   /* USER CODE END 2 */
 
@@ -922,9 +990,32 @@ void StartDefaultTask(void *argument)
   /* init code for LWIP */
   MX_LWIP_Init();
   /* USER CODE BEGIN 5 */
+  check_user_code();
+  StartNetworkTasks();
   /* Infinite loop */
   for(;;)
   {
+  	// проверка на наличие конфигурации
+  	if (kairos_config.config_version == 0 || kairos_config.config_version == 0xFFFFFFFF){
+  		osDelay(100);
+  		continue;
+  	}
+  	// Чтение данных с входов
+  	Get_Discrete(&project_vars);
+  	Analog_GetValues(&project_vars);
+  	// TODO чтение RS485
+
+  	// Выполнение пользовательского кода
+  	if (code_correct)
+  			user_plugin(&api);
+
+  	// TODO реализация ПИД-регулятора
+
+  	// Вывод данных на вывод
+  	Set_DiscreteOutput(&project_vars);
+  	Analog_SetOutput(&project_vars);
+
+  	saveProjectVars(&eeprom, &project_vars);
     osDelay(1);
   }
   /* USER CODE END 5 */

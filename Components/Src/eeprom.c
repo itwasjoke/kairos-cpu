@@ -155,4 +155,46 @@ HAL_StatusTypeDef eeprom_read_buffer(eeprom_t *i2c_eeprom, uint16_t mem_address,
     return status;
 }
 
+/**
+ * Чтение основной конфигурации
+ */
+HAL_StatusTypeDef getConfig(eeprom_t *h_eeprom, KairosConfig_t *config) {
+    if (config == NULL) return HAL_ERROR;
+
+    return eeprom_read_buffer(h_eeprom, CONFIG_ADDR, (uint8_t*)config, sizeof(KairosConfig_t));
+}
+
+/**
+ * Сохранение основной конфигурации
+ */
+HAL_StatusTypeDef saveConfig(eeprom_t *h_eeprom, KairosConfig_t *config) {
+    if (config == NULL) return HAL_ERROR;
+
+    return eeprom_write_buffer(h_eeprom, CONFIG_ADDR, (uint8_t*)config, sizeof(KairosConfig_t));
+}
+
+/**
+ * Чтение переменных проекта
+ */
+HAL_StatusTypeDef getProjectVars(eeprom_t *h_eeprom, ProjectVars_t *vars) {
+    if (vars == NULL) return HAL_ERROR;
+
+    return eeprom_read_buffer(h_eeprom, PROJECT_VARS_ADDR, (uint8_t*)vars, sizeof(ProjectVars_t));
+}
+
+/**
+ * Сохранение переменных проекта
+ */
+HAL_StatusTypeDef saveProjectVars(eeprom_t *h_eeprom, ProjectVars_t *vars) {
+    if (vars == NULL) return HAL_ERROR;
+
+    // Проверка: не выходим ли мы за пределы 8Кб (8192 байт)
+    if ((PROJECT_VARS_ADDR + sizeof(ProjectVars_t)) > EEPROM_TOTAL_SIZE) {
+        // Ошибка: данные не влезают в AT24C64
+        return HAL_ERROR;
+    }
+
+    return eeprom_write_buffer(h_eeprom, PROJECT_VARS_ADDR, (uint8_t*)vars, sizeof(ProjectVars_t));
+}
+
 

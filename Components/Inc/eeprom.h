@@ -1,16 +1,13 @@
-/*
- * eeprom.h
- *
- *  Created on: Feb 6, 2026
- *      Author: itwasjoke
- */
-
 #ifndef EEPROM_H_
 #define EEPROM_H_
 
 #include "i2c.h"
 
-#define EEPROM_TOTAL_SIZE       4096
+#define EEPROM_TOTAL_SIZE       8192
+
+#define EEPROM_START_ADDR        0x0000
+#define CONFIG_ADDR              EEPROM_START_ADDR
+#define PROJECT_VARS_ADDR        (CONFIG_ADDR + sizeof(KairosConfig_t))
 
 // Задержка после операции записи для завершения внутреннего цикла записи EEPROM
 #define EEPROM_WRITE_DELAY_MS   6
@@ -69,5 +66,12 @@ HAL_StatusTypeDef eeprom_write_buffer(eeprom_t *i2c_eeprom, uint16_t mem_address
  */
 HAL_StatusTypeDef eeprom_read_buffer(eeprom_t *i2c_eeprom, uint16_t mem_address, uint8_t* pData, uint16_t size);
 
+HAL_StatusTypeDef getConfig(eeprom_t *h_eeprom, KairosConfig_t *config);
+
+HAL_StatusTypeDef getProjectVars(eeprom_t *h_eeprom, ProjectVars_t *vars);
+
+HAL_StatusTypeDef saveConfig(eeprom_t *h_eeprom, KairosConfig_t *config);
+
+HAL_StatusTypeDef saveProjectVars(eeprom_t *h_eeprom, ProjectVars_t *vars);
 
 #endif /* EEPROM_H_ */

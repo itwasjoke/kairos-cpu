@@ -8,9 +8,9 @@
 #ifndef APP_TCP_H_
 #define APP_TCP_H_
 
-#include <api_interface.h>
 #include "Config.h"
 #include <stdint.h>
+#include "stm32f4xx_hal.h"
 #include "cmsis_os.h" // CMSIS RTOS V2
 
 #define CMD_SET_CONFIG  0x01
