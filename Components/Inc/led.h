@@ -26,4 +26,6 @@ void Led_Blink(LedName_t led, uint32_t duration_ms);
 // Канал 1-4 на одном таймере, 1-2 на другом
 void Led_PWM_Set(uint8_t led_num, uint8_t duty_percent);
 
+void LedServiceTask(void *argument);
+
 #endif /* LED_H_ */

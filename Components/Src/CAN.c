@@ -1,6 +1,89 @@
 #include "can.h"
+#include "Config.h"
 
 static CAN_Config_t *g_can_config;
+
+/**
+ * @brief Вспомогательная функция для извлечения битов из 8-байтового массива данных CAN.
+ * Поддерживает Little Endian упаковку данных.
+ */
+static uint32_t extract_bits(uint8_t *data, uint16_t start_bit, uint8_t bit_len) {
+    uint64_t payload = 0;
+    // Собираем 64-битное число из 8 байт (Little Endian)
+    for (int i = 0; i < 8; i++) {
+        payload |= ((uint64_t)data[i] << (i * 8));
+    }
+    
+    // Сдвигаем и маскируем нужную область
+    uint64_t mask = (bit_len >= 64) ? 0xFFFFFFFFFFFFFFFF : (((uint64_t)1 << bit_len) - 1);
+    return (uint32_t)((payload >> start_bit) & mask);
+}
+
+/**
+ * @brief Задача обработки входящих CAN-сообщений.
+ * Выполняет разбор данных согласно конфигурации и кладет их в project_vars.
+ */
+void CAN_Task(void *argument) {
+    CANr_Message_t rx_msg;
+    
+    for (;;) {
+        // Ожидание сообщения из очереди
+        if (CAN_Bus_Read(g_can_config, &rx_msg, osWaitForever) == osOK) {
+            
+            // Стартовый индекс переменных CAN в глобальном массиве
+            uint16_t current_var_offset = kairos_config.main_config.can_start_var;
+
+            // Перебор всех ожидаемых сообщений в конфигурации
+            for (uint8_t i = 0; i < kairos_config.gpio_config.can_count; i++) {
+                CanMessage_t *conf_msg = &kairos_config.gpio_config.can_messages[i];
+
+                // Проверка совпадения ID
+                if (rx_msg.id == conf_msg->id) {
+                    
+                    // Проверка IDC (если IDC != 0, считаем его как минимально допустимый DLC)
+                    if (conf_msg->IDC != 0 && rx_msg.dlc < conf_msg->IDC) {
+                        break; 
+                    }
+
+                    // Разбор переменных внутри сообщения
+                    for (uint8_t v = 0; v < conf_msg->var_count; v++) {
+                        VarDesc_t *v_desc = &conf_msg->vars[v];
+                        uint16_t target_idx = current_var_offset + v;
+                        
+                        if (target_idx >= MAX_VARS) break;
+
+                        switch (v_desc->type) {
+                            case VAR_TYPE_BOOL:
+                                project_vars.vars[target_idx].as_bool = (uint8_t)extract_bits(rx_msg.data, v_desc->start_bit, 1);
+                                break;
+                            case VAR_TYPE_INT8:
+                                project_vars.vars[target_idx].as_uint8 = (uint8_t)extract_bits(rx_msg.data, v_desc->start_bit, 8);
+                                break;
+                            case VAR_TYPE_INT16:
+                                project_vars.vars[target_idx].as_uint16 = (uint16_t)extract_bits(rx_msg.data, v_desc->start_bit, 16);
+                                break;
+                            case VAR_TYPE_INT32:
+                                project_vars.vars[target_idx].as_uint32 = extract_bits(rx_msg.data, v_desc->start_bit, 32);
+                                break;
+                            case VAR_TYPE_FLOAT: {
+                                uint32_t raw = extract_bits(rx_msg.data, v_desc->start_bit, 32);
+                                project_vars.vars[target_idx].as_float = *(float*)&raw;
+                                break;
+                            }
+                            default:
+                                break;
+                        }
+                    }
+                    // Сообщение обработано, выходим из цикла поиска ID
+                    break;
+                }
+                
+                // Накапливаем смещение: каждая конфигурация сообщения занимает var_count регистров
+                current_var_offset += conf_msg->var_count;
+            }
+        }
+    }
+}
 
 HAL_StatusTypeDef CAN_Bus_Init(CAN_Config_t *config) {
   g_can_config = config;

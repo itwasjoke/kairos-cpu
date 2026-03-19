@@ -12,9 +12,9 @@ typedef struct{
 	uint32_t ip;
 	uint32_t mask;
 	uint32_t gateway;
-	uint16_t rs_start_byte;
-	uint16_t can_start_byte;
-	uint16_t user_start_byte;
+	uint16_t rs_start_var;
+	uint16_t can_start_var;
+	uint16_t user_start_var;
 } MainConfig_t;
 
 typedef struct {

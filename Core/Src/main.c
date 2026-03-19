@@ -279,6 +279,7 @@ int main(void)
   /* USER CODE BEGIN RTOS_THREADS */
   LedService_Init();
   LedTask = osThreadNew(LedServiceTask, NULL, &LedTask_attributes);
+  CanTask = osThreadNew(CAN_Task, NULL, &CanTask_attributes);
   /* USER CODE END RTOS_THREADS */
 
   /* USER CODE BEGIN RTOS_EVENTS */

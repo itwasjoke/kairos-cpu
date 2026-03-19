@@ -24,4 +24,6 @@ typedef struct {
 HAL_StatusTypeDef CAN_Bus_Init(CAN_Config_t *config);
 osStatus_t CAN_Bus_Read(CAN_Config_t *config, CANr_Message_t *msg, uint32_t timeout);
 
+void CAN_Task(void *argument);
+
 #endif

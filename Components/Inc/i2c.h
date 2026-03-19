@@ -29,6 +29,11 @@ typedef struct {
 } eeprom_t;
 
 /**
+ * Инициализация параметров для корректной работы i2c
+ */
+void i2c_init(i2c_config_t *i2c_config, I2C_HandleTypeDef *hi2c, osMutexId_t mutex);
+
+/**
   * @brief  Безопасная запись данных в память I2C устройства с использованием мьютекса
   * @param  i2c_device Конфигурация драйвера
   * @param  memAddress Адрес памяти устройства

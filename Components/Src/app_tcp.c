@@ -50,11 +50,28 @@ void Flash_Save_User_Code(uint8_t *data, uint32_t len) {
   HAL_NVIC_SystemReset();
 }
 
-void convert_to_be_fast(uint32_t *src, uint8_t *dest, uint16_t count32) {
-  uint32_t *dest32 = (uint32_t *)dest;
-  for (uint16_t i = 0; i < count32; i++) {
-    dest32[i] = __REV(src[i]);
-  }
+/**
+ * @brief Конвертирует массив 32-битных значений в формат Modbus (Hi-word first, Big Endian)
+ */
+void convert_to_modbus_32bit(uint32_t *src, uint16_t *dest, uint16_t count32) {
+    for (uint16_t i = 0; i < count32; i++) {
+        uint32_t val = src[i];
+        // В Modbus 32-битные значения обычно передаются Hi-регистр (биты 31-16) затем Lo-регистр (биты 15-0)
+        // Каждый 16-битный регистр должен быть в Network Byte Order (Big Endian)
+        dest[i * 2] = htons((uint16_t)(val >> 16));
+        dest[i * 2 + 1] = htons((uint16_t)(val & 0xFFFF));
+    }
+}
+
+/**
+ * @brief Конвертирует данные из Modbus (Hi-word first, Big Endian) в системный формат
+ */
+void convert_from_modbus_32bit(uint16_t *src, uint32_t *dest, uint16_t count32) {
+    for (uint16_t i = 0; i < count32; i++) {
+        uint16_t hi = ntohs(src[i * 2]);
+        uint16_t lo = ntohs(src[i * 2 + 1]);
+        dest[i] = ((uint32_t)hi << 16) | lo;
+    }
 }
 
 // --- Задача Modbus TCP ---
@@ -103,23 +120,17 @@ void ModbusTask(void *argument) {
       memcpy(tx, rx, 8);
       int tx_total = 0;
 
-      if (func == 0x03) {
+      if (func == 0x03) { // Read Holding Registers
         tx[8] = reg_count * 2;
 
-        // Используем твою функцию.
-        // reg_count / 2 — это количество 32-битных переменных
-        convert_to_be_fast(&project_vars.vars[start_reg / 2].as_uint32, &tx[9], reg_count / 2);
+        // Каждая переменная ProjectVars занимает 2 регистра (4 байта)
+        convert_to_modbus_32bit(&project_vars.vars[start_reg / 2].as_uint32, (uint16_t*)&tx[9], reg_count / 2);
 
         tx_total = 6 + 3 + (reg_count * 2);
       }
-      else if (func == 0x10) {
-        // Для записи используем ту же логику __REV
-        uint32_t *src32 = (uint32_t *)&rx[13];
-        uint32_t *dst32 = (uint32_t *)(((void*)&project_vars.vars[start_reg / 2].as_uint32));
-
-        for (int i = 0; i < (reg_count / 2); i++) {
-          dst32[i] = __REV(src32[i]);
-        }
+      else if (func == 0x10) { // Write Multiple Registers
+        // Принимаем данные и конвертируем обратно в системный формат
+        convert_from_modbus_32bit((uint16_t*)&rx[13], &project_vars.vars[start_reg / 2].as_uint32, reg_count / 2);
 
         memcpy(&tx[8], &rx[8], 4);
         tx_total = 12;
