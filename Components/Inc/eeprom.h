@@ -18,6 +18,8 @@
 // 7-битный адрес устройства EEPROM на шине I2C
 #define EEPROM_DEVICE_ADDR 0x50 << 1
 
+extern eeprom_t eeprom;
+
 /**
  * @brief Инициализирует драйвер EEPROM
  * @param Конфигурация драйвера

@@ -191,14 +191,18 @@ void ConfigTask(void *argument) {
         // --- 1. ПРИЕМ ОСНОВНОЙ КОНФИГУРАЦИИ ---
         case CMD_SET_CONFIG:
           if (recv_full(conn, &kairos_config, sizeof(kairos_config)) > 0) {
-            send(conn, &ack, 1, 0);
+          	if (saveConfig(&eeprom, &kairos_config) == HAL_OK) {
+									send(conn, &ack, 1, 0); // Отправляем ACK только если записалось
+							}
           }
           break;
 
         // --- 2. ПРИЕМ ПЕРЕМЕННЫХ ПРОЕКТА ---
         case CMD_SET_VARS:
           if (recv_full(conn, &project_vars, sizeof(project_vars)) > 0) {
-            send(conn, &ack, 1, 0);
+          	if (saveProjectVars(&eeprom, &project_vars) == HAL_OK) {
+								send(conn, &ack, 1, 0);
+						}
           }
           break;
 

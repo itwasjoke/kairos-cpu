@@ -278,7 +278,9 @@ int main(void)
   /* USER CODE BEGIN RTOS_THREADS */
   LedService_Init();
   LedTask = osThreadNew(LedServiceTask, NULL, &LedTask_attributes);
-  CanTask = osThreadNew(CAN_Task, NULL, &CanTask_attributes);
+  if (statusConfig == HAL_OK && statusVars == HAL_OK && kairos_config.config_version != 0xFFFFFFFF) {
+		CanTask = osThreadNew(CAN_Task, NULL, &CanTask_attributes);
+	}
   /* USER CODE END RTOS_THREADS */
 
   /* USER CODE BEGIN RTOS_EVENTS */
@@ -997,7 +999,7 @@ void StartDefaultTask(void *argument)
   {
   	// проверка на наличие конфигурации
   	if (kairos_config.config_version == 0 || kairos_config.config_version == 0xFFFFFFFF){
-  		Led_Blink(LED_1, 50);
+  		Led_Blink(LED_4, 200);
   		osDelay(500);
   		continue;
   	}
@@ -1016,7 +1018,6 @@ void StartDefaultTask(void *argument)
   	Set_DiscreteOutput(&project_vars);
   	Analog_SetOutput(&project_vars);
 
-  	saveProjectVars(&eeprom, &project_vars);
     osDelay(1);
   }
   /* USER CODE END 5 */
