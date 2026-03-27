@@ -13,7 +13,7 @@
 #define EEPROM_WRITE_DELAY_MS   6
 
 // Размер страницы EEPROM в байтах
-#define EEPROM_PAGE_SIZE        8
+#define EEPROM_PAGE_SIZE        32
 
 // 7-битный адрес устройства EEPROM на шине I2C
 #define EEPROM_DEVICE_ADDR 0x50 << 1

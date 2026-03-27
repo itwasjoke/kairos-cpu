@@ -25,7 +25,6 @@
 #include "RS485.h"
 
 // Networking
-#include "Ethernet.h"
 #include "app_tcp.h"
 
 // Math/Control

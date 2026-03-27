@@ -35,7 +35,6 @@ typedef struct __attribute__((packed)) {
     uint32_t magic_key;
     VarValue_u vars[MAX_VARS];
     uint16_t var_count;
-    uint8_t var_types[MAX_VARS];
 } ProjectVars_t;
 
 // --- 2. API Функции (Таблица экспорта) ---

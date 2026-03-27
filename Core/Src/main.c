@@ -220,36 +220,6 @@ int main(void)
 
   eeprom_init(&eeprom, &i2c_config, EEPROM_DEVICE_ADDR, I2C_MEMADD_SIZE_16BIT);
 
-  HAL_StatusTypeDef statusConfig = getConfig(&eeprom, &kairos_config);
-  HAL_StatusTypeDef statusVars = getProjectVars(&eeprom, &project_vars);
-
-  if (statusConfig == HAL_OK && statusVars == HAL_OK && kairos_config.config_version != 0xFFFFFFFF) {
-
-		analog_handle.channel_types_adc[0] = kairos_config.gpio_config.analog_types[0];
-		analog_handle.channel_types_adc[1] = kairos_config.gpio_config.analog_types[1];
-		analog_handle.channel_types_adc[2] = kairos_config.gpio_config.analog_types[2];
-		analog_handle.channel_types_adc[3] = kairos_config.gpio_config.analog_types[3];
-		analog_handle.channel_types_dac[0] = kairos_config.gpio_config.analog_types[4];
-		analog_handle.channel_types_dac[1] = kairos_config.gpio_config.analog_types[5];
-
-		can_config.baud_rate = kairos_config.gpio_config.can_speed;
-		can_config.filter_id = kairos_config.gpio_config.can_filter_id;
-		can_config.filter_mask = kairos_config.gpio_config.can_filter_mask;
-
-		rs485.baud_rate = kairos_config.gpio_config.rs_speed;
-		rs485.stop_bits = kairos_config.gpio_config.rs_stop_bits;
-
-		Analog_Init(&analog_handle);
-
-		if (CAN_Bus_Init(&can_config) != HAL_OK) {
-			Error_Handler();
-		}
-
-		if (RS485_Init(&rs485) != HAL_OK){
-			Error_Handler();
-		}
-  }
-
   /* USER CODE END 2 */
 
   /* Init scheduler */
@@ -278,9 +248,6 @@ int main(void)
   /* USER CODE BEGIN RTOS_THREADS */
   LedService_Init();
   LedTask = osThreadNew(LedServiceTask, NULL, &LedTask_attributes);
-  if (statusConfig == HAL_OK && statusVars == HAL_OK && kairos_config.config_version != 0xFFFFFFFF) {
-		CanTask = osThreadNew(CAN_Task, NULL, &CanTask_attributes);
-	}
   /* USER CODE END RTOS_THREADS */
 
   /* USER CODE BEGIN RTOS_EVENTS */
@@ -990,6 +957,37 @@ static void MX_GPIO_Init(void)
 void StartDefaultTask(void *argument)
 {
   /* init code for LWIP */
+  HAL_StatusTypeDef statusConfig = getConfig(&eeprom, &kairos_config);
+
+  if (statusConfig == HAL_OK && kairos_config.config_version != 0xFFFFFFFF) {
+
+		analog_handle.channel_types_adc[0] = kairos_config.gpio_config.analog_types[0];
+		analog_handle.channel_types_adc[1] = kairos_config.gpio_config.analog_types[1];
+		analog_handle.channel_types_adc[2] = kairos_config.gpio_config.analog_types[2];
+		analog_handle.channel_types_adc[3] = kairos_config.gpio_config.analog_types[3];
+		analog_handle.channel_types_dac[0] = kairos_config.gpio_config.analog_types[4];
+		analog_handle.channel_types_dac[1] = kairos_config.gpio_config.analog_types[5];
+
+		can_config.baud_rate = kairos_config.gpio_config.can_speed;
+		can_config.filter_id = kairos_config.gpio_config.can_filter_id;
+		can_config.filter_mask = kairos_config.gpio_config.can_filter_mask;
+
+		rs485.baud_rate = kairos_config.gpio_config.rs_speed;
+		rs485.stop_bits = kairos_config.gpio_config.rs_stop_bits;
+
+		Analog_Init(&analog_handle);
+
+		if (CAN_Bus_Init(&can_config) != HAL_OK) {
+			Error_Handler();
+		}
+
+		if (RS485_Init(&rs485) != HAL_OK){
+			Error_Handler();
+		}
+
+		CanTask = osThreadNew(CAN_Task, NULL, &CanTask_attributes);
+  }
+
   MX_LWIP_Init();
   /* USER CODE BEGIN 5 */
   check_user_code();

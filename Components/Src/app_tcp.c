@@ -4,15 +4,17 @@
 
 const osThreadAttr_t configTask_attributes = {
   .name = "ConfigTask",
-  .stack_size = 2048 * 4,
+  .stack_size = 2048 * 8,
   .priority = (osPriority_t) osPriorityNormal,
 };
 
 const osThreadAttr_t modbusTask_attributes = {
   .name = "ModbusTask",
-  .stack_size = 1024 * 4,
+  .stack_size = 1024 * 8,
   .priority = (osPriority_t) osPriorityNormal,
 };
+
+struct timeval tv = {.tv_sec = 0, .tv_usec = 500000};
 
 // --- Работа с Flash (Твой код) ---
 void Flash_Save_User_Code(uint8_t *data, uint32_t len) {
@@ -75,10 +77,10 @@ void convert_from_modbus_32bit(uint16_t *src, uint32_t *dest, uint16_t count32) 
 }
 
 // --- Задача Modbus TCP ---
-uint8_t tx[1080] __attribute__((aligned(4)));
-uint8_t rx[260];
-
 void ModbusTask(void *argument) {
+	uint8_t tx[1080] __attribute__((aligned(4)));
+	uint8_t rx[260];
+
   int server_sock, client_sock;
   struct sockaddr_in srv_addr;
 
@@ -86,20 +88,30 @@ void ModbusTask(void *argument) {
   srv_addr.sin_family = AF_INET;
   srv_addr.sin_addr.s_addr = INADDR_ANY;
   srv_addr.sin_port = htons(502);
+  if (server_sock < 0) return;
 
-  bind(server_sock, (struct sockaddr *)&srv_addr, sizeof(srv_addr));
-  listen(server_sock, 3);
+  if (bind(server_sock, (struct sockaddr *)&srv_addr, sizeof(srv_addr)) < 0) {
+			close(server_sock);
+			return;
+	}
+
+  listen(server_sock, 5);
 
   for (;;) {
-    client_sock = accept(server_sock, NULL, NULL);
-    if (client_sock < 0) continue;
+  	struct sockaddr_in client_addr;
+		socklen_t addr_len = sizeof(client_addr);
+		client_sock = accept(server_sock, (struct sockaddr *)&client_addr, &addr_len);
+		if (client_sock < 0) {
+				osDelay(10);
+				continue;
+		}
 
-    struct timeval tv = {.tv_sec = 5, .tv_usec = 0};
     setsockopt(client_sock, SOL_SOCKET, SO_RCVTIMEO, &tv, sizeof(tv));
 
     while (1) {
       int len = recv(client_sock, rx, sizeof(rx), 0);
-      if (len < 12) break;
+      if (len <= 0) break;
+      if (len < 12) continue;
 
       uint8_t func = rx[7];
       uint16_t start_reg = (rx[8] << 8) | rx[9];
@@ -139,10 +151,11 @@ void ModbusTask(void *argument) {
       if (tx_total > 0) {
         uint16_t mb_len = tx_total - 6;
         tx[4] = (mb_len >> 8); tx[5] = (mb_len & 0xFF);
-        send(client_sock, tx, tx_total, 0);
+        if (send(client_sock, rx, tx_total, 0) < 0) break;
       }
     }
     close(client_sock);
+    osDelay(1);
   }
 }
 
@@ -166,106 +179,115 @@ void ConfigTask(void *argument) {
     .sin_addr.s_addr = INADDR_ANY
   };
 
-  bind(server_sock, (struct sockaddr *)&addr, sizeof(addr));
-  listen(server_sock, 1);
+  if (server_sock < 0) return;
 
-  // Буфер для приема чанков прошивки (выровнен для HAL)
+  // Разрешаем повторное использование адреса (полезно при ребутах)
+  int opt = 1;
+  setsockopt(server_sock, SOL_SOCKET, SO_REUSEADDR, &opt, sizeof(opt));
+
+  if (bind(server_sock, (struct sockaddr *)&addr, sizeof(addr)) < 0) {
+    close(server_sock);
+    return;
+  }
+
+  listen(server_sock, 4);
+
+  // Буфер в стеке (8Кб стека позволяют выделить 1Кб под чанк)
   uint8_t chunk[CHUNK_SIZE] __attribute__((aligned(4)));
 
   for (;;) {
-    int conn = accept(server_sock, NULL, NULL);
+    struct sockaddr_in client_addr;
+    socklen_t addr_len = sizeof(client_addr);
+    int conn = accept(server_sock, (struct sockaddr *)&client_addr, &addr_len);
+
     if (conn < 0) {
       osDelay(10);
       continue;
     }
 
-    // Устанавливаем таймаут на чтение (чтобы сокет не висел вечно при сбое связи)
-    struct timeval tv = {.tv_sec = 5, .tv_usec = 0};
-    setsockopt(conn, SOL_SOCKET, SO_RCVTIMEO, &tv, sizeof(tv));
+    // Стандартный таймаут 1 секунда для команд
+    struct timeval timeout = {.tv_sec = 1, .tv_usec = 0};
+    setsockopt(conn, SOL_SOCKET, SO_RCVTIMEO, &timeout, sizeof(timeout));
 
-    uint8_t cmd;
-    if (recv(conn, &cmd, 1, 0) == 1) {
+    uint8_t cmd = 0;
+    int res = recv(conn, &cmd, 1, 0);
+
+    if (res > 0) {
       uint8_t ack = 0xAA;
+      uint8_t nack = 0xEE; // Ошибка
 
       switch (cmd) {
-        // --- 1. ПРИЕМ ОСНОВНОЙ КОНФИГУРАЦИИ ---
         case CMD_SET_CONFIG:
           if (recv_full(conn, &kairos_config, sizeof(kairos_config)) > 0) {
-          	if (saveConfig(&eeprom, &kairos_config) == HAL_OK) {
-									send(conn, &ack, 1, 0); // Отправляем ACK только если записалось
-							}
+            if (saveConfig(&eeprom, &kairos_config) == HAL_OK) {
+              send(conn, &ack, 1, 0);
+            } else send(conn, &nack, 1, 0);
           }
           break;
 
-        // --- 2. ПРИЕМ ПЕРЕМЕННЫХ ПРОЕКТА ---
-        case CMD_SET_VARS:
-          if (recv_full(conn, &project_vars, sizeof(project_vars)) > 0) {
-          	if (saveProjectVars(&eeprom, &project_vars) == HAL_OK) {
-								send(conn, &ack, 1, 0);
-						}
-          }
-          break;
-
-        // --- 3. ПРОШИВКА USER LOGIC (.bin) ---
-        case CMD_FLASH_BIN:
+        case CMD_FLASH_BIN: {
           uint32_t bin_len = 0;
-          if (recv_full(conn, &bin_len, 4) > 0) {
-            HAL_FLASH_Unlock();
+          if (recv_full(conn, &bin_len, 4) <= 0) break;
 
-            FLASH_EraseInitTypeDef EraseInitStruct = {
-              .TypeErase = FLASH_TYPEERASE_SECTORS,
-              .Sector = FLASH_SECTOR_7,
-              .NbSectors = 1,
-              .VoltageRange = FLASH_VOLTAGE_RANGE_3
-            };
-            uint32_t SectorError;
+          // УВЕЛИЧИВАЕМ ТАЙМАУТ: Стирание Flash долгое!
+          struct timeval long_timeout = {.tv_sec = 5, .tv_usec = 0};
+          setsockopt(conn, SOL_SOCKET, SO_RCVTIMEO, &long_timeout, sizeof(long_timeout));
 
-            if (HAL_FLASHEx_Erase(&EraseInitStruct, &SectorError) == HAL_OK) {
-              uint32_t write_addr = USER_CODE_ADDR;
+          HAL_FLASH_Unlock();
+          FLASH_EraseInitTypeDef EraseInitStruct = {
+            .TypeErase = FLASH_TYPEERASE_SECTORS,
+            .Sector = FLASH_SECTOR_7,
+            .NbSectors = 1,
+            .VoltageRange = FLASH_VOLTAGE_RANGE_3
+          };
+          uint32_t SectorError;
 
-              // Заголовок
-              HAL_FLASH_Program(FLASH_TYPEPROGRAM_WORD, write_addr, MAGIC_KEY);
-              HAL_FLASH_Program(FLASH_TYPEPROGRAM_WORD, write_addr + 4, bin_len);
-              write_addr += 8;
+          if (HAL_FLASHEx_Erase(&EraseInitStruct, &SectorError) == HAL_OK) {
+            uint32_t write_addr = USER_CODE_ADDR;
+            HAL_FLASH_Program(FLASH_TYPEPROGRAM_WORD, write_addr, MAGIC_KEY);
+            HAL_FLASH_Program(FLASH_TYPEPROGRAM_WORD, write_addr + 4, bin_len);
+            write_addr += 8;
 
-              uint32_t remaining = bin_len;
-              uint8_t success = 1;
+            uint32_t remaining = bin_len;
+            uint8_t success = 1;
 
-              while (remaining > 0) {
-                uint32_t to_recv = (remaining > CHUNK_SIZE) ? CHUNK_SIZE : remaining;
-                if (recv_full(conn, chunk, to_recv) > 0) {
-                  for (uint32_t i = 0; i < to_recv; i++) {
-                    if (HAL_FLASH_Program(FLASH_TYPEPROGRAM_BYTE, write_addr + i, chunk[i]) != HAL_OK) {
-                      success = 0;
-                      break;
-                    }
+            while (remaining > 0) {
+              uint32_t to_recv = (remaining > CHUNK_SIZE) ? CHUNK_SIZE : remaining;
+              if (recv_full(conn, chunk, to_recv) > 0) {
+                for (uint32_t i = 0; i < to_recv; i++) {
+                  if (HAL_FLASH_Program(FLASH_TYPEPROGRAM_BYTE, write_addr + i, chunk[i]) != HAL_OK) {
+                    success = 0; break;
                   }
-                  write_addr += to_recv;
-                  remaining -= to_recv;
-                } else {
-                  success = 0;
-                  break;
                 }
-              }
-
-              if (success) {
-                send(conn, &ack, 1, 0);
-                osDelay(500);
-                HAL_FLASH_Lock();
-                HAL_NVIC_SystemReset();
+                if (!success) break;
+                write_addr += to_recv;
+                remaining -= to_recv;
+              } else {
+                success = 0; break;
               }
             }
-            HAL_FLASH_Lock();
-          }
-          break;
 
-        default:
-          // Неизвестная команда
+            if (success) {
+              send(conn, &ack, 1, 0);
+              osDelay(200);
+              HAL_FLASH_Lock();
+              close(conn); // Закрываем сокет ПЕРЕД ресетом
+              HAL_NVIC_SystemReset();
+            } else {
+              send(conn, &nack, 1, 0);
+            }
+          }
+          HAL_FLASH_Lock();
           break;
+        }
+
+        // По умолчанию просто игнорируем
+        default: break;
       }
     }
+
     close(conn);
-    osDelay(10);
+    osDelay(5);
   }
 }
 

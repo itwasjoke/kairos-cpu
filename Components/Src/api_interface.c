@@ -6,57 +6,57 @@
 // --- Реализация API (Impl) ---
 
 uint8_t impl_get_8int(uint16_t id) {
-    if (id >= 0 && project_vars.var_types[id] == VAR_TYPE_INT8)
+    if (id >= 0 && kairos_config.var_types[id] == VAR_TYPE_INT8)
         return project_vars.vars[id].as_uint8;
     return 0;
 }
 
 void impl_set_8int(uint16_t id, uint8_t val) {
-    if (id >= 0 && project_vars.var_types[id] == VAR_TYPE_INT8)
+    if (id >= 0 && kairos_config.var_types[id] == VAR_TYPE_INT8)
         project_vars.vars[id].as_uint8 = val;
 }
 
 uint16_t impl_get_16int(uint16_t id) {
-    if (id >= 0 && project_vars.var_types[id] == VAR_TYPE_INT16)
+    if (id >= 0 && kairos_config.var_types[id] == VAR_TYPE_INT16)
         return project_vars.vars[id].as_uint16;
     return 0;
 }
 
 void impl_set_16int(uint16_t id, uint16_t val) {
-    if (id >= 0 && project_vars.var_types[id] == VAR_TYPE_INT16)
+    if (id >= 0 && kairos_config.var_types[id] == VAR_TYPE_INT16)
         project_vars.vars[id].as_uint16 = val;
 }
 
 uint32_t impl_get_32int(uint16_t id) {
-    if (id >= 0 && project_vars.var_types[id] == VAR_TYPE_INT32)
+    if (id >= 0 && kairos_config.var_types[id] == VAR_TYPE_INT32)
         return project_vars.vars[id].as_uint32;
     return 0;
 }
 
 void impl_set_32int(uint16_t id, uint32_t val) {
-    if (id >= 0 && project_vars.var_types[id] == VAR_TYPE_INT32)
+    if (id >= 0 && kairos_config.var_types[id] == VAR_TYPE_INT32)
         project_vars.vars[id].as_uint32 = val;
 }
 
 float impl_get_float(uint16_t id) {
-    if (id >= 0 && project_vars.var_types[id] == VAR_TYPE_FLOAT)
+    if (id >= 0 && kairos_config.var_types[id] == VAR_TYPE_FLOAT)
         return project_vars.vars[id].as_float;
     return 0.0f;
 }
 
 void impl_set_float(uint16_t id, float val) {
-    if (id >= 0 && project_vars.var_types[id] == VAR_TYPE_FLOAT)
+    if (id >= 0 && kairos_config.var_types[id] == VAR_TYPE_FLOAT)
         project_vars.vars[id].as_float = val;
 }
 
 uint8_t impl_get_bool(uint16_t id) {
-    if (id >= 0 && project_vars.var_types[id] == VAR_TYPE_BOOL)
+    if (id >= 0 && kairos_config.var_types[id] == VAR_TYPE_BOOL)
         return project_vars.vars[id].as_bool;
     return 0;
 }
 
 void impl_set_bool(uint16_t id, uint8_t val) {
-    if (id >= 0 && project_vars.var_types[id] == VAR_TYPE_BOOL)
+    if (id >= 0 && kairos_config.var_types[id] == VAR_TYPE_BOOL)
         project_vars.vars[id].as_bool = val;
 }
 

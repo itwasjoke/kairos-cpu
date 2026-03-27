@@ -15,7 +15,7 @@
 #include "Config.h"
 
 // Таймаут для операций I2C в мс
-#define I2C_TIMEOUT          4
+#define I2C_TIMEOUT          200
 
 typedef struct {
 	osMutexId_t i2c_mutex;
