@@ -66,7 +66,7 @@ DMA_HandleTypeDef hdma_uart4_tx;
 osThreadId_t defaultTaskHandle;
 const osThreadAttr_t defaultTask_attributes = {
   .name = "defaultTask",
-  .stack_size = 128 * 4,
+  .stack_size = 256 * 4,
   .priority = (osPriority_t) osPriorityLow6,
 };
 /* USER CODE BEGIN PV */
@@ -1008,7 +1008,7 @@ void StartDefaultTask(void *argument)
   	if (new_config) {
   		newConfigStatus = saveConfig(&eeprom, &kairos_config);
   		new_config = 0;
-  		if (newConfigStatus != HAL_OK) Led_Blink(LED_3, 500);
+  		if (newConfigStatus != HAL_OK) Led_Blink(LED_1, 1000);
 		}
 
   	// Чтение данных с входов
@@ -1025,8 +1025,8 @@ void StartDefaultTask(void *argument)
   	// Вывод данных на вывод
   	Set_DiscreteOutput(&project_vars);
   	Analog_SetOutput(&project_vars);
-  	Led_Blink(LED_3, 200);
-    osDelay(1);
+  	Led_Blink(LED_3, 100);
+    osDelay(1000);
   }
   /* USER CODE END 5 */
 }
