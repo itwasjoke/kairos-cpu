@@ -5,13 +5,13 @@
 const osThreadAttr_t configTask_attributes = {
   .name = "ConfigTask",
   .stack_size = 2048 * 8,
-  .priority = (osPriority_t) osPriorityNormal,
+  .priority = (osPriority_t) osPriorityBelowNormal,
 };
 
 const osThreadAttr_t modbusTask_attributes = {
   .name = "ModbusTask",
   .stack_size = 1024 * 8,
-  .priority = (osPriority_t) osPriorityNormal,
+  .priority = (osPriority_t) osPriorityBelowNormal1,
 };
 
 struct timeval tv = {.tv_sec = 0, .tv_usec = 500000};
@@ -151,7 +151,7 @@ void ModbusTask(void *argument) {
       if (tx_total > 0) {
         uint16_t mb_len = tx_total - 6;
         tx[4] = (mb_len >> 8); tx[5] = (mb_len & 0xFF);
-        if (send(client_sock, rx, tx_total, 0) < 0) break;
+        if (send(client_sock, tx, tx_total, 0) < 0) break;
       }
     }
     close(client_sock);
@@ -193,7 +193,7 @@ void ConfigTask(void *argument) {
   listen(server_sock, 4);
 
   // Буфер в стеке (8Кб стека позволяют выделить 1Кб под чанк)
-  uint8_t chunk[CHUNK_SIZE] __attribute__((aligned(4)));
+//  uint8_t chunk[CHUNK_SIZE] __attribute__((aligned(4)));
 
   for (;;) {
     struct sockaddr_in client_addr;
@@ -218,68 +218,68 @@ void ConfigTask(void *argument) {
 
       switch (cmd) {
         case CMD_SET_CONFIG:
+        	Led_Blink(LED_2, 500);
           if (recv_full(conn, &kairos_config, sizeof(kairos_config)) > 0) {
-            if (saveConfig(&eeprom, &kairos_config) == HAL_OK) {
-              send(conn, &ack, 1, 0);
-            } else send(conn, &nack, 1, 0);
-          }
+						new_config = 1;
+						send(conn, &ack, 1, 0);
+					} else send(conn, &nack, 1, 0);
           break;
 
-        case CMD_FLASH_BIN: {
-          uint32_t bin_len = 0;
-          if (recv_full(conn, &bin_len, 4) <= 0) break;
-
-          // УВЕЛИЧИВАЕМ ТАЙМАУТ: Стирание Flash долгое!
-          struct timeval long_timeout = {.tv_sec = 5, .tv_usec = 0};
-          setsockopt(conn, SOL_SOCKET, SO_RCVTIMEO, &long_timeout, sizeof(long_timeout));
-
-          HAL_FLASH_Unlock();
-          FLASH_EraseInitTypeDef EraseInitStruct = {
-            .TypeErase = FLASH_TYPEERASE_SECTORS,
-            .Sector = FLASH_SECTOR_7,
-            .NbSectors = 1,
-            .VoltageRange = FLASH_VOLTAGE_RANGE_3
-          };
-          uint32_t SectorError;
-
-          if (HAL_FLASHEx_Erase(&EraseInitStruct, &SectorError) == HAL_OK) {
-            uint32_t write_addr = USER_CODE_ADDR;
-            HAL_FLASH_Program(FLASH_TYPEPROGRAM_WORD, write_addr, MAGIC_KEY);
-            HAL_FLASH_Program(FLASH_TYPEPROGRAM_WORD, write_addr + 4, bin_len);
-            write_addr += 8;
-
-            uint32_t remaining = bin_len;
-            uint8_t success = 1;
-
-            while (remaining > 0) {
-              uint32_t to_recv = (remaining > CHUNK_SIZE) ? CHUNK_SIZE : remaining;
-              if (recv_full(conn, chunk, to_recv) > 0) {
-                for (uint32_t i = 0; i < to_recv; i++) {
-                  if (HAL_FLASH_Program(FLASH_TYPEPROGRAM_BYTE, write_addr + i, chunk[i]) != HAL_OK) {
-                    success = 0; break;
-                  }
-                }
-                if (!success) break;
-                write_addr += to_recv;
-                remaining -= to_recv;
-              } else {
-                success = 0; break;
-              }
-            }
-
-            if (success) {
-              send(conn, &ack, 1, 0);
-              osDelay(200);
-              HAL_FLASH_Lock();
-              close(conn); // Закрываем сокет ПЕРЕД ресетом
-              HAL_NVIC_SystemReset();
-            } else {
-              send(conn, &nack, 1, 0);
-            }
-          }
-          HAL_FLASH_Lock();
-          break;
-        }
+//        case CMD_FLASH_BIN: {
+//          uint32_t bin_len = 0;
+//          if (recv_full(conn, &bin_len, 4) <= 0) break;
+//
+//          // УВЕЛИЧИВАЕМ ТАЙМАУТ: Стирание Flash долгое!
+//          struct timeval long_timeout = {.tv_sec = 5, .tv_usec = 0};
+//          setsockopt(conn, SOL_SOCKET, SO_RCVTIMEO, &long_timeout, sizeof(long_timeout));
+//
+//          HAL_FLASH_Unlock();
+//          FLASH_EraseInitTypeDef EraseInitStruct = {
+//            .TypeErase = FLASH_TYPEERASE_SECTORS,
+//            .Sector = FLASH_SECTOR_7,
+//            .NbSectors = 1,
+//            .VoltageRange = FLASH_VOLTAGE_RANGE_3
+//          };
+//          uint32_t SectorError;
+//
+//          if (HAL_FLASHEx_Erase(&EraseInitStruct, &SectorError) == HAL_OK) {
+//            uint32_t write_addr = USER_CODE_ADDR;
+//            HAL_FLASH_Program(FLASH_TYPEPROGRAM_WORD, write_addr, MAGIC_KEY);
+//            HAL_FLASH_Program(FLASH_TYPEPROGRAM_WORD, write_addr + 4, bin_len);
+//            write_addr += 8;
+//
+//            uint32_t remaining = bin_len;
+//            uint8_t success = 1;
+//
+//            while (remaining > 0) {
+//              uint32_t to_recv = (remaining > CHUNK_SIZE) ? CHUNK_SIZE : remaining;
+//              if (recv_full(conn, chunk, to_recv) > 0) {
+//                for (uint32_t i = 0; i < to_recv; i++) {
+//                  if (HAL_FLASH_Program(FLASH_TYPEPROGRAM_BYTE, write_addr + i, chunk[i]) != HAL_OK) {
+//                    success = 0; break;
+//                  }
+//                }
+//                if (!success) break;
+//                write_addr += to_recv;
+//                remaining -= to_recv;
+//              } else {
+//                success = 0; break;
+//              }
+//            }
+//
+//            if (success) {
+//              send(conn, &ack, 1, 0);
+//              osDelay(200);
+//              HAL_FLASH_Lock();
+//              close(conn); // Закрываем сокет ПЕРЕД ресетом
+//              HAL_NVIC_SystemReset();
+//            } else {
+//              send(conn, &nack, 1, 0);
+//            }
+//          }
+//          HAL_FLASH_Lock();
+//          break;
+//        }
 
         // По умолчанию просто игнорируем
         default: break;
@@ -287,11 +287,12 @@ void ConfigTask(void *argument) {
     }
 
     close(conn);
+    Led_Blink(LED_2, 20);
     osDelay(5);
   }
 }
 
 void StartNetworkTasks(void) {
   osThreadNew(ConfigTask, NULL, &configTask_attributes);
-  osThreadNew(ModbusTask, NULL, &modbusTask_attributes);
+//  osThreadNew(ModbusTask, NULL, &modbusTask_attributes);
 }

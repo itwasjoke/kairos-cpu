@@ -67,12 +67,13 @@ osThreadId_t defaultTaskHandle;
 const osThreadAttr_t defaultTask_attributes = {
   .name = "defaultTask",
   .stack_size = 128 * 4,
-  .priority = (osPriority_t) osPriorityNormal,
+  .priority = (osPriority_t) osPriorityLow6,
 };
 /* USER CODE BEGIN PV */
 i2c_config_t i2c_config;
 eeprom_t eeprom;
 KairosConfig_t kairos_config;
+uint8_t new_config = 0;
 ProjectVars_t project_vars;
 PluginEntry_t user_plugin;
 uint8_t code_correct = 0;
@@ -110,14 +111,14 @@ osThreadId_t LedTask;
 const osThreadAttr_t LedTask_attributes = {
   .name = "LedTask",
   .stack_size = 128 * 4,
-  .priority = (osPriority_t) osPriorityNormal,
+  .priority = (osPriority_t) osPriorityLow1,
 };
 
 osThreadId_t CanTask;
 const osThreadAttr_t CanTask_attributes = {
   .name = "CanTask",
   .stack_size = 128 * 18,
-  .priority = (osPriority_t) osPriorityNormal7,
+  .priority = (osPriority_t) osPriorityLow3,
 };
 osMutexId_t i2cMutexHandle;
 
@@ -956,9 +957,11 @@ static void MX_GPIO_Init(void)
 /* USER CODE END Header_StartDefaultTask */
 void StartDefaultTask(void *argument)
 {
-  /* init code for LWIP */
   HAL_StatusTypeDef statusConfig = getConfig(&eeprom, &kairos_config);
-
+//  uint8_t a[2] = {5, 12};
+//  uint8_t b[2] = {0, 0};
+//  eeprom_write_buffer(&eeprom, 90, a, 2);
+//  eeprom_read_buffer(&eeprom, 90, b, 2);
   if (statusConfig == HAL_OK && kairos_config.config_version != 0xFFFFFFFF) {
 
 		analog_handle.channel_types_adc[0] = kairos_config.gpio_config.analog_types[0];
@@ -987,9 +990,10 @@ void StartDefaultTask(void *argument)
 
 		CanTask = osThreadNew(CAN_Task, NULL, &CanTask_attributes);
   }
-
+  /* init code for LWIP */
   MX_LWIP_Init();
   /* USER CODE BEGIN 5 */
+  HAL_StatusTypeDef newConfigStatus = HAL_ERROR;
   check_user_code();
   StartNetworkTasks();
   /* Infinite loop */
@@ -1001,6 +1005,12 @@ void StartDefaultTask(void *argument)
   		osDelay(500);
   		continue;
   	}
+  	if (new_config) {
+  		newConfigStatus = saveConfig(&eeprom, &kairos_config);
+  		new_config = 0;
+  		if (newConfigStatus != HAL_OK) Led_Blink(LED_3, 500);
+		}
+
   	// Чтение данных с входов
   	Get_Discrete(&project_vars);
   	Analog_GetValues(&project_vars);
@@ -1015,7 +1025,7 @@ void StartDefaultTask(void *argument)
   	// Вывод данных на вывод
   	Set_DiscreteOutput(&project_vars);
   	Analog_SetOutput(&project_vars);
-
+  	Led_Blink(LED_3, 200);
     osDelay(1);
   }
   /* USER CODE END 5 */

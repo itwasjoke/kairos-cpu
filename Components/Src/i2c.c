@@ -31,7 +31,9 @@ HAL_StatusTypeDef i2c_safe_mem_write(
     HAL_StatusTypeDef status = HAL_ERROR;
 
     configASSERT(NULL != i2c_device->i2c_config->i2c_mutex || i2c_eeprom_semaphore != NULL);
-    if (osMutexAcquire(i2c_device->i2c_config->i2c_mutex, osWaitForever) == osOK) {
+
+    if (osMutexAcquire(i2c_device->i2c_config->i2c_mutex, I2C_TIMEOUT) == osOK) {
+        // Запускаем асинхронную запись
         status = HAL_I2C_Mem_Write_IT(
         		i2c_device->i2c_config->i2c_handle,
 				i2c_device->addr,
@@ -40,9 +42,24 @@ HAL_StatusTypeDef i2c_safe_mem_write(
 				pData,
 				size
 				);
+
         if (status == HAL_OK) {
+            // Ждем завершения передачи по I2C (семафор из прерывания)
             if (osSemaphoreAcquire(i2c_eeprom_semaphore, I2C_TIMEOUT) != osOK) {
                 status = HAL_TIMEOUT;
+            } else {
+                // ПЕРЕДАЧА завершена. Теперь ждем, пока EEPROM переварит данные (запишет страницу в кремний)
+            	uint8_t try = 0;
+							do {
+									if (try > 10) break;
+									// Правильная функция для ACK Polling. 3 попытки, 10 мс таймаут на попытку
+									status = HAL_I2C_IsDeviceReady(i2c_device->i2c_config->i2c_handle, i2c_device->addr, 10, 10);
+
+									if (status != HAL_OK) {
+											osDelay(1); // Обязательно отдаем квант времени планировщику!
+											try++;
+									}
+							} while (status != HAL_OK);
             }
         }
         osMutexRelease(i2c_device->i2c_config->i2c_mutex);

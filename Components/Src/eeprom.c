@@ -104,7 +104,7 @@ HAL_StatusTypeDef eeprom_write_buffer(eeprom_t *i2c_eeprom, uint16_t mem_address
 
         // Вызываем безопасную функцию записи с мьютексом
         status = i2c_safe_mem_write(
-			i2c_eeprom,
+        		i2c_eeprom,
             current_address,
             current_data_ptr,
             bytes_to_write
@@ -113,13 +113,6 @@ HAL_StatusTypeDef eeprom_write_buffer(eeprom_t *i2c_eeprom, uint16_t mem_address
         if (status != HAL_OK) {
             return status; // Возвращаем ошибку, если запись не удалась
         }
-
-        // Задержка для завершения внутренней записи
-        HAL_StatusTypeDef poll_status;
-        do {
-            poll_status = HAL_I2C_Master_Transmit(i2c_eeprom->i2c_config->i2c_handle, i2c_eeprom->addr, NULL, 0, 100);
-        } while (poll_status != HAL_OK);
-//        osDelay(EEPROM_WRITE_DELAY_MS);
 
         // Обновляем указатели и счетчики для следующего шага
         current_address += bytes_to_write;

@@ -67,5 +67,6 @@ typedef struct __attribute__((packed)){
 
 extern ProjectVars_t project_vars;
 extern KairosConfig_t kairos_config;
+extern uint8_t new_config;
 
 #endif /* CONFIG_H_ */
