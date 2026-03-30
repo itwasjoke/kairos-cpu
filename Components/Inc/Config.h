@@ -62,6 +62,7 @@ typedef struct __attribute__((packed)){
 	MainConfig_t main_config;
 	GpioConfig_t gpio_config;
 	uint32_t config_version;
+	uint8_t var_count;
   uint8_t var_types[MAX_VARS];
 } KairosConfig_t;
 

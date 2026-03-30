@@ -53,110 +53,187 @@ void Flash_Save_User_Code(uint8_t *data, uint32_t len) {
 }
 
 /**
- * @brief Конвертирует массив 32-битных значений в формат Modbus (Hi-word first, Big Endian)
+ * @brief Безопасно записывает 32-битные значения в буфер Modbus (Hi-word first)
+ * @param src Указатель на массив uint32_t
+ * @param dest_bytes Указатель на байтовый буфер (может быть не выровнен)
+ * @param count32 Количество 32-битных переменных
  */
-void convert_to_modbus_32bit(uint32_t *src, uint16_t *dest, uint16_t count32) {
+void convert_to_modbus_32bit(uint32_t *src, uint8_t *dest_bytes, uint16_t count32) {
     for (uint16_t i = 0; i < count32; i++) {
         uint32_t val = src[i];
-        // В Modbus 32-битные значения обычно передаются Hi-регистр (биты 31-16) затем Lo-регистр (биты 15-0)
-        // Каждый 16-битный регистр должен быть в Network Byte Order (Big Endian)
-        dest[i * 2] = htons((uint16_t)(val >> 16));
-        dest[i * 2 + 1] = htons((uint16_t)(val & 0xFFFF));
+
+        // Разбиваем на 16-битные слова
+        uint16_t hi = htons((uint16_t)(val >> 16));
+        uint16_t lo = htons((uint16_t)(val & 0xFFFF));
+
+        // Копируем побайтово через memcpy, чтобы избежать Alignment Fault
+        memcpy(&dest_bytes[i * 4], &hi, 2);
+        memcpy(&dest_bytes[i * 4 + 2], &lo, 2);
     }
 }
 
 /**
- * @brief Конвертирует данные из Modbus (Hi-word first, Big Endian) в системный формат
+ * @brief Безопасно читает 32-битные значения из буфера Modbus
  */
-void convert_from_modbus_32bit(uint16_t *src, uint32_t *dest, uint16_t count32) {
+void convert_from_modbus_32bit(uint8_t *src_bytes, uint32_t *dest, uint16_t count32) {
     for (uint16_t i = 0; i < count32; i++) {
-        uint16_t hi = ntohs(src[i * 2]);
-        uint16_t lo = ntohs(src[i * 2 + 1]);
+        uint16_t hi_be, lo_be;
+
+        // Безопасно забираем байты из сетевого пакета
+        memcpy(&hi_be, &src_bytes[i * 4], 2);
+        memcpy(&lo_be, &src_bytes[i * 4 + 2], 2);
+
+        uint16_t hi = ntohs(hi_be);
+        uint16_t lo = ntohs(lo_be);
+
         dest[i] = ((uint32_t)hi << 16) | lo;
     }
 }
 
-// --- Задача Modbus TCP ---
+/**
+ * @brief Задача Modbus TCP Server
+ */
 void ModbusTask(void *argument) {
-	uint8_t tx[1080] __attribute__((aligned(4)));
-	uint8_t rx[260];
+    uint8_t tx[1080] __attribute__((aligned(4)));
+    uint8_t rx[260];
 
-  int server_sock, client_sock;
-  struct sockaddr_in srv_addr;
+    int server_sock;
+    struct sockaddr_in srv_addr;
 
-  server_sock = socket(AF_INET, SOCK_STREAM, 0);
-  srv_addr.sin_family = AF_INET;
-  srv_addr.sin_addr.s_addr = INADDR_ANY;
-  srv_addr.sin_port = htons(502);
-  if (server_sock < 0) return;
+    // Настройка таймаута (например, 5 секунд)
+    struct timeval tv;
+    tv.tv_sec = 5;
+    tv.tv_usec = 0;
 
-  if (bind(server_sock, (struct sockaddr *)&srv_addr, sizeof(srv_addr)) < 0) {
-			close(server_sock);
-			return;
-	}
+    // Создание сокета
+    server_sock = socket(AF_INET, SOCK_STREAM, 0);
+    if (server_sock < 0) return;
 
-  listen(server_sock, 5);
+    // Настройка адреса
+    srv_addr.sin_family = AF_INET;
+    srv_addr.sin_addr.s_addr = INADDR_ANY;
+    srv_addr.sin_port = htons(502);
 
-  for (;;) {
-  	struct sockaddr_in client_addr;
-		socklen_t addr_len = sizeof(client_addr);
-		client_sock = accept(server_sock, (struct sockaddr *)&client_addr, &addr_len);
-		if (client_sock < 0) {
-				osDelay(10);
-				continue;
-		}
+    // Разрешаем повторное использование адреса (полезно при перезапусках)
+    int opt = 1;
+    setsockopt(server_sock, SOL_SOCKET, SO_REUSEADDR, &opt, sizeof(opt));
 
-    setsockopt(client_sock, SOL_SOCKET, SO_RCVTIMEO, &tv, sizeof(tv));
-
-    while (1) {
-      int len = recv(client_sock, rx, sizeof(rx), 0);
-      if (len <= 0) break;
-      if (len < 12) continue;
-
-      uint8_t func = rx[7];
-      uint16_t start_reg = (rx[8] << 8) | rx[9];
-      uint16_t reg_count = (rx[10] << 8) | rx[11];
-
-      // Проверка границ: 1 переменная = 2 регистра
-      uint16_t max_allowed_reg = project_vars.var_count * 2;
-
-      // Проверка на четность и выход за диапазон
-      if (start_reg % 2 != 0 || reg_count % 2 != 0 || (start_reg + reg_count) > max_allowed_reg) {
-        memcpy(tx, rx, 8);
-        tx[7] |= 0x80; tx[8] = 0x02; // Illegal Data Address
-        tx[4] = 0; tx[5] = 3;
-        send(client_sock, tx, 9, 0);
-        continue;
-      }
-
-      memcpy(tx, rx, 8);
-      int tx_total = 0;
-
-      if (func == 0x03) { // Read Holding Registers
-        tx[8] = reg_count * 2;
-
-        // Каждая переменная ProjectVars занимает 2 регистра (4 байта)
-        convert_to_modbus_32bit(&project_vars.vars[start_reg / 2].as_uint32, (uint16_t*)&tx[9], reg_count / 2);
-
-        tx_total = 6 + 3 + (reg_count * 2);
-      }
-      else if (func == 0x10) { // Write Multiple Registers
-        // Принимаем данные и конвертируем обратно в системный формат
-        convert_from_modbus_32bit((uint16_t*)&rx[13], &project_vars.vars[start_reg / 2].as_uint32, reg_count / 2);
-
-        memcpy(&tx[8], &rx[8], 4);
-        tx_total = 12;
-      }
-
-      if (tx_total > 0) {
-        uint16_t mb_len = tx_total - 6;
-        tx[4] = (mb_len >> 8); tx[5] = (mb_len & 0xFF);
-        if (send(client_sock, tx, tx_total, 0) < 0) break;
-      }
+    if (bind(server_sock, (struct sockaddr *)&srv_addr, sizeof(srv_addr)) < 0) {
+        close(server_sock);
+        return;
     }
-    close(client_sock);
-    osDelay(1);
-  }
+
+    listen(server_sock, 5);
+
+    for (;;) {
+        struct sockaddr_in client_addr;
+        socklen_t addr_len = sizeof(client_addr);
+
+        // Ожидание нового подключения
+        int client_sock = accept(server_sock, (struct sockaddr *)&client_addr, &addr_len);
+
+        if (client_sock < 0) {
+            osDelay(10);
+            continue;
+        }
+
+        // Устанавливаем таймаут на прием данных
+        setsockopt(client_sock, SOL_SOCKET, SO_RCVTIMEO, &tv, sizeof(tv));
+
+        // Цикл обслуживания КОНКРЕТНОГО клиента (Keep-Alive)
+        while (1) {
+            int len = recv(client_sock, rx, sizeof(rx), 0);
+
+            // Если len == 0, клиент закрыл соединение. Если < 0, произошла ошибка или таймаут.
+            if (len <= 0) {
+                break;
+            }
+
+            // Минимальный размер пакета Modbus TCP — 12 байт
+            if (len < 12) {
+                continue;
+            }
+
+            uint8_t func = rx[7];
+            uint16_t start_reg = (rx[8] << 8) | rx[9];
+            uint16_t reg_count = (rx[10] << 8) | rx[11];
+            uint16_t max_allowed_reg = kairos_config.var_count * 2;
+
+            int tx_total = 0;
+
+            // 1. Проверка адресации (кратность 2 и границы)
+            if (start_reg % 2 != 0 || reg_count % 2 != 0 || (start_reg + reg_count) > max_allowed_reg) {
+                memcpy(tx, rx, 8); // MBAP Header
+                tx[7] |= 0x80;     // Error flag
+                tx[8] = 0x02;      // Exception: Illegal Data Address
+                tx[4] = 0; tx[5] = 3;
+                tx_total = 9;
+            }
+            // 2. Проверка на переполнение выходного буфера
+            else if (9 + (reg_count * 2) > sizeof(tx)) {
+                memcpy(tx, rx, 8);
+                tx[7] |= 0x80;
+                tx[8] = 0x04;      // Exception: Slave Device Failure
+                tx[4] = 0; tx[5] = 3;
+                tx_total = 9;
+            }
+            else {
+                // Формируем стандартный заголовок ответа (копируем Transaction ID и Unit ID)
+                memcpy(tx, rx, 8);
+
+                if (func == 0x03) { // Read Holding Registers
+                    tx[8] = (uint8_t)(reg_count * 2); // Byte count
+
+                    // Безопасная конвертация из системы в Modbus
+                    convert_to_modbus_32bit(
+                        &project_vars.vars[start_reg / 2].as_uint32,
+                        &tx[9],
+                        reg_count / 2
+                    );
+
+                    tx_total = 6 + 3 + (reg_count * 2);
+                }
+                else if (func == 0x10) { // Write Multiple Registers
+                    // Проверяем, что в пакете реально пришли данные, которые мы ожидаем
+                    uint8_t bytes_to_write = rx[12];
+                    if (len >= (13 + bytes_to_write)) {
+                        // Безопасная конвертация из Modbus в систему
+                        convert_from_modbus_32bit(
+                            &rx[13],
+                            &project_vars.vars[start_reg / 2].as_uint32,
+                            reg_count / 2
+                        );
+
+                        // Ответ для 0x10: функция + адрес + количество (копируем из запроса)
+                        memcpy(&tx[8], &rx[8], 4);
+                        tx_total = 12;
+                    }
+                }
+                else {
+                    // Функция не поддерживается
+                    tx[7] |= 0x80;
+                    tx[8] = 0x01; // Illegal Function
+                    tx[4] = 0; tx[5] = 3;
+                    tx_total = 9;
+                }
+            }
+
+            // Отправка ответа, если он сформирован
+            if (tx_total > 0) {
+                // Обновляем длину в заголовке MBAP (байты 4-5)
+                uint16_t mb_payload_len = tx_total - 6;
+                tx[4] = (uint8_t)(mb_payload_len >> 8);
+                tx[5] = (uint8_t)(mb_payload_len & 0xFF);
+
+                if (send(client_sock, tx, tx_total, 0) < 0) {
+                    break; // Ошибка сети — закрываем этого клиента
+                }
+            }
+        } // Конец while(1) клиента
+
+        // Закрываем сокет и возвращаемся к accept() для нового клиента
+        close(client_sock);
+    }
 }
 
 // Вспомогательная функция гарантированного приема
@@ -294,5 +371,5 @@ void ConfigTask(void *argument) {
 
 void StartNetworkTasks(void) {
   osThreadNew(ConfigTask, NULL, &configTask_attributes);
-//  osThreadNew(ModbusTask, NULL, &modbusTask_attributes);
+  osThreadNew(ModbusTask, NULL, &modbusTask_attributes);
 }

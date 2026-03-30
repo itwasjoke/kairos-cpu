@@ -31,10 +31,8 @@ typedef union {
 
 // Конфигурация проекта
 #define MAX_VARS 255
-typedef struct __attribute__((packed)) {
-    uint32_t magic_key;
+typedef struct {
     VarValue_u vars[MAX_VARS];
-    uint16_t var_count;
 } ProjectVars_t;
 
 // --- 2. API Функции (Таблица экспорта) ---

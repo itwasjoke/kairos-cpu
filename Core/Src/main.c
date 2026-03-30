@@ -958,10 +958,6 @@ static void MX_GPIO_Init(void)
 void StartDefaultTask(void *argument)
 {
   HAL_StatusTypeDef statusConfig = getConfig(&eeprom, &kairos_config);
-//  uint8_t a[2] = {5, 12};
-//  uint8_t b[2] = {0, 0};
-//  eeprom_write_buffer(&eeprom, 90, a, 2);
-//  eeprom_read_buffer(&eeprom, 90, b, 2);
   if (statusConfig == HAL_OK && kairos_config.config_version != 0xFFFFFFFF) {
 
 		analog_handle.channel_types_adc[0] = kairos_config.gpio_config.analog_types[0];
@@ -994,13 +990,18 @@ void StartDefaultTask(void *argument)
   MX_LWIP_Init();
   /* USER CODE BEGIN 5 */
   HAL_StatusTypeDef newConfigStatus = HAL_ERROR;
+
+  for (uint8_t i = 0; i < MAX_VARS; i++){
+  	project_vars.vars[i].as_uint32 = 0;
+  }
+
   check_user_code();
   StartNetworkTasks();
   /* Infinite loop */
   for(;;)
   {
   	// проверка на наличие конфигурации
-  	if (kairos_config.config_version == 0 || kairos_config.config_version == 0xFFFFFFFF){
+  	if ((kairos_config.config_version == 0 || kairos_config.config_version == 0xFFFFFFFF) && newConfigStatus != HAL_OK){
   		Led_Blink(LED_4, 200);
   		osDelay(500);
   		continue;
