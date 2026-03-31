@@ -4,14 +4,14 @@
 
 const osThreadAttr_t configTask_attributes = {
   .name = "ConfigTask",
-  .stack_size = 2048 * 8,
+  .stack_size = 1024 * 4,
   .priority = (osPriority_t) osPriorityBelowNormal,
 };
 
 const osThreadAttr_t modbusTask_attributes = {
   .name = "ModbusTask",
-  .stack_size = 1024 * 8,
-  .priority = (osPriority_t) osPriorityBelowNormal1,
+  .stack_size = 1024 * 3,
+  .priority = (osPriority_t) osPriorityNormal,
 };
 
 struct timeval tv = {.tv_sec = 0, .tv_usec = 500000};
@@ -90,12 +90,25 @@ void convert_from_modbus_32bit(uint8_t *src_bytes, uint32_t *dest, uint16_t coun
     }
 }
 
+// Вспомогательная функция гарантированного приема
+int recv_full(int sock, void *ptr, int len) {
+  int total = 0;
+  char *p = (char *)ptr;
+  while (total < len) {
+    int n = recv(sock, p + total, len - total, 0);
+    if (n <= 0) return -1;
+    total += n;
+  }
+  return total;
+}
+
+static uint8_t modbus_tx[1080] __attribute__((aligned(4)));
+static uint8_t modbus_rx[260];
 /**
  * @brief Задача Modbus TCP Server
  */
 void ModbusTask(void *argument) {
-    uint8_t tx[1080] __attribute__((aligned(4)));
-    uint8_t rx[260];
+
 
     int server_sock;
     struct sockaddr_in srv_addr;
@@ -142,52 +155,51 @@ void ModbusTask(void *argument) {
 
         // Цикл обслуживания КОНКРЕТНОГО клиента (Keep-Alive)
         while (1) {
-            int len = recv(client_sock, rx, sizeof(rx), 0);
+						int res = recv_full(client_sock, modbus_rx, 7); // Читаем MBAP Header
+						if (res <= 0) break;
 
-            // Если len == 0, клиент закрыл соединение. Если < 0, произошла ошибка или таймаут.
-            if (len <= 0) {
-                break;
-            }
+						uint16_t payload_len = (modbus_rx[4] << 8) | modbus_rx[5];
+						if (payload_len > (sizeof(modbus_rx) - 7)) break; // Защита от переполнения
 
-            // Минимальный размер пакета Modbus TCP — 12 байт
-            if (len < 12) {
-                continue;
-            }
+						res = recv_full(client_sock, &modbus_rx[7], payload_len); // Читаем остаток
+						if (res <= 0) break;
 
-            uint8_t func = rx[7];
-            uint16_t start_reg = (rx[8] << 8) | rx[9];
-            uint16_t reg_count = (rx[10] << 8) | rx[11];
+						int len = 7 + payload_len;
+
+            uint8_t func = modbus_rx[7];
+            uint16_t start_reg = (modbus_rx[8] << 8) | modbus_rx[9];
+            uint16_t reg_count = (modbus_rx[10] << 8) | modbus_rx[11];
             uint16_t max_allowed_reg = kairos_config.var_count * 2;
 
             int tx_total = 0;
 
             // 1. Проверка адресации (кратность 2 и границы)
             if (start_reg % 2 != 0 || reg_count % 2 != 0 || (start_reg + reg_count) > max_allowed_reg) {
-                memcpy(tx, rx, 8); // MBAP Header
-                tx[7] |= 0x80;     // Error flag
-                tx[8] = 0x02;      // Exception: Illegal Data Address
-                tx[4] = 0; tx[5] = 3;
+                memcpy(modbus_tx, modbus_rx, 8); // MBAP Header
+                modbus_tx[7] |= 0x80;     // Error flag
+                modbus_tx[8] = 0x02;      // Exception: Illegal Data Address
+                modbus_tx[4] = 0; modbus_tx[5] = 3;
                 tx_total = 9;
             }
             // 2. Проверка на переполнение выходного буфера
-            else if (9 + (reg_count * 2) > sizeof(tx)) {
-                memcpy(tx, rx, 8);
-                tx[7] |= 0x80;
-                tx[8] = 0x04;      // Exception: Slave Device Failure
-                tx[4] = 0; tx[5] = 3;
+            else if (9 + (reg_count * 2) > sizeof(modbus_tx)) {
+                memcpy(modbus_tx, modbus_rx, 8);
+                modbus_tx[7] |= 0x80;
+                modbus_tx[8] = 0x04;      // Exception: Slave Device Failure
+                modbus_tx[4] = 0; modbus_tx[5] = 3;
                 tx_total = 9;
             }
             else {
                 // Формируем стандартный заголовок ответа (копируем Transaction ID и Unit ID)
-                memcpy(tx, rx, 8);
+                memcpy(modbus_tx, modbus_rx, 8);
 
                 if (func == 0x03) { // Read Holding Registers
-                    tx[8] = (uint8_t)(reg_count * 2); // Byte count
+                	modbus_tx[8] = (uint8_t)(reg_count * 2); // Byte count
 
                     // Безопасная конвертация из системы в Modbus
                     convert_to_modbus_32bit(
                         &project_vars.vars[start_reg / 2].as_uint32,
-                        &tx[9],
+                        &modbus_tx[9],
                         reg_count / 2
                     );
 
@@ -195,25 +207,25 @@ void ModbusTask(void *argument) {
                 }
                 else if (func == 0x10) { // Write Multiple Registers
                     // Проверяем, что в пакете реально пришли данные, которые мы ожидаем
-                    uint8_t bytes_to_write = rx[12];
+                    uint8_t bytes_to_write = modbus_rx[12];
                     if (len >= (13 + bytes_to_write)) {
                         // Безопасная конвертация из Modbus в систему
                         convert_from_modbus_32bit(
-                            &rx[13],
+                            &modbus_rx[13],
                             &project_vars.vars[start_reg / 2].as_uint32,
                             reg_count / 2
                         );
 
                         // Ответ для 0x10: функция + адрес + количество (копируем из запроса)
-                        memcpy(&tx[8], &rx[8], 4);
+                        memcpy(&modbus_tx[8], &modbus_rx[8], 4);
                         tx_total = 12;
                     }
                 }
                 else {
                     // Функция не поддерживается
-                    tx[7] |= 0x80;
-                    tx[8] = 0x01; // Illegal Function
-                    tx[4] = 0; tx[5] = 3;
+                	modbus_tx[7] |= 0x80;
+                	modbus_tx[8] = 0x01; // Illegal Function
+                	modbus_tx[4] = 0; modbus_tx[5] = 3;
                     tx_total = 9;
                 }
             }
@@ -222,10 +234,10 @@ void ModbusTask(void *argument) {
             if (tx_total > 0) {
                 // Обновляем длину в заголовке MBAP (байты 4-5)
                 uint16_t mb_payload_len = tx_total - 6;
-                tx[4] = (uint8_t)(mb_payload_len >> 8);
-                tx[5] = (uint8_t)(mb_payload_len & 0xFF);
+                modbus_tx[4] = (uint8_t)(mb_payload_len >> 8);
+                modbus_tx[5] = (uint8_t)(mb_payload_len & 0xFF);
 
-                if (send(client_sock, tx, tx_total, 0) < 0) {
+                if (send(client_sock, modbus_tx, tx_total, 0) < 0) {
                     break; // Ошибка сети — закрываем этого клиента
                 }
             }
@@ -233,19 +245,8 @@ void ModbusTask(void *argument) {
 
         // Закрываем сокет и возвращаемся к accept() для нового клиента
         close(client_sock);
+        osDelay(10);
     }
-}
-
-// Вспомогательная функция гарантированного приема
-int recv_full(int sock, void *ptr, int len) {
-  int total = 0;
-  char *p = (char *)ptr;
-  while (total < len) {
-    int n = recv(sock, p + total, len - total, 0);
-    if (n <= 0) return -1;
-    total += n;
-  }
-  return total;
 }
 
 void ConfigTask(void *argument) {
@@ -295,9 +296,9 @@ void ConfigTask(void *argument) {
 
       switch (cmd) {
         case CMD_SET_CONFIG:
-        	Led_Blink(LED_2, 500);
           if (recv_full(conn, &kairos_config, sizeof(kairos_config)) > 0) {
 						new_config = 1;
+						Led_Blink(LED_2, 100);
 						send(conn, &ack, 1, 0);
 					} else send(conn, &nack, 1, 0);
           break;

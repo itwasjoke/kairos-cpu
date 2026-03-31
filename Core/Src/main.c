@@ -66,10 +66,13 @@ DMA_HandleTypeDef hdma_uart4_tx;
 osThreadId_t defaultTaskHandle;
 const osThreadAttr_t defaultTask_attributes = {
   .name = "defaultTask",
-  .stack_size = 256 * 4,
+  .stack_size = 1024 * 4,
   .priority = (osPriority_t) osPriorityLow6,
 };
 /* USER CODE BEGIN PV */
+#if (configAPPLICATION_ALLOCATED_HEAP == 1)
+__attribute__((section(".ccmram"))) uint8_t ucHeap[configTOTAL_HEAP_SIZE];
+#endif
 i2c_config_t i2c_config;
 eeprom_t eeprom;
 KairosConfig_t kairos_config;
@@ -346,7 +349,7 @@ static void MX_ADC1_Init(void)
   hadc1.Init.ExternalTrigConv = ADC_SOFTWARE_START;
   hadc1.Init.DataAlign = ADC_DATAALIGN_RIGHT;
   hadc1.Init.NbrOfConversion = 4;
-  hadc1.Init.DMAContinuousRequests = DISABLE;
+  hadc1.Init.DMAContinuousRequests = ENABLE;
   hadc1.Init.EOCSelection = ADC_EOC_SINGLE_CONV;
   if (HAL_ADC_Init(&hadc1) != HAL_OK)
   {
@@ -984,32 +987,47 @@ void StartDefaultTask(void *argument)
 			Error_Handler();
 		}
 
+	  for (uint8_t i = 0; i < kairos_config.var_count; i++){
+	  	switch (kairos_config.var_types[i]) {
+	  	case 4:
+	  		project_vars.vars[i].as_float = 0.0;
+	  		break;
+	  	case 5:
+	  		project_vars.vars[i].as_bool = 0;
+	  		break;
+	  	default:
+	  		project_vars.vars[i].as_uint32 = 0;
+	  		break;
+	  	}
+
+	  }
+
 		CanTask = osThreadNew(CAN_Task, NULL, &CanTask_attributes);
   }
   /* init code for LWIP */
   MX_LWIP_Init();
   /* USER CODE BEGIN 5 */
   HAL_StatusTypeDef newConfigStatus = HAL_ERROR;
-
-  for (uint8_t i = 0; i < MAX_VARS; i++){
-  	project_vars.vars[i].as_uint32 = 0;
-  }
-
   check_user_code();
   StartNetworkTasks();
   /* Infinite loop */
   for(;;)
   {
   	// проверка на наличие конфигурации
-  	if ((kairos_config.config_version == 0 || kairos_config.config_version == 0xFFFFFFFF) && newConfigStatus != HAL_OK){
+  	if (kairos_config.config_version == 0
+  			|| kairos_config.config_version == 0xFFFFFFFF
+				){
   		Led_Blink(LED_4, 200);
   		osDelay(500);
   		continue;
   	}
   	if (new_config) {
-  		newConfigStatus = saveConfig(&eeprom, &kairos_config);
   		new_config = 0;
-  		if (newConfigStatus != HAL_OK) Led_Blink(LED_1, 1000);
+  		osDelay(100);
+  		Led_Blink(LED_1, 2000);
+  		newConfigStatus = saveConfig(&eeprom, &kairos_config);
+  		if (newConfigStatus != HAL_OK) Led_Blink(LED_4, 1000);
+  		else Led_Blink(LED_4, 5000);
 		}
 
   	// Чтение данных с входов
