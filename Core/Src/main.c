@@ -1024,10 +1024,12 @@ void StartDefaultTask(void *argument)
   	if (new_config) {
   		new_config = 0;
   		osDelay(100);
-  		Led_Blink(LED_1, 2000);
   		newConfigStatus = saveConfig(&eeprom, &kairos_config);
-  		if (newConfigStatus != HAL_OK) Led_Blink(LED_4, 1000);
-  		else Led_Blink(LED_4, 5000);
+  		if (newConfigStatus != HAL_OK) Led_Blink(LED_4, 3000);
+  		else {
+  			Led_Blink(LED_1, 2000);
+  			Led_Blink(LED_3, 2000);
+  		}
 		}
 
   	// Чтение данных с входов
@@ -1044,8 +1046,7 @@ void StartDefaultTask(void *argument)
   	// Вывод данных на вывод
   	Set_DiscreteOutput(&project_vars);
   	Analog_SetOutput(&project_vars);
-  	Led_Blink(LED_3, 100);
-    osDelay(1000);
+    osDelay(10);
   }
   /* USER CODE END 5 */
 }

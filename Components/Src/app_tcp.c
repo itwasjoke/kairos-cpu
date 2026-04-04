@@ -155,93 +155,81 @@ void ModbusTask(void *argument) {
 
         // Цикл обслуживания КОНКРЕТНОГО клиента (Keep-Alive)
         while (1) {
-						int res = recv_full(client_sock, modbus_rx, 7); // Читаем MBAP Header
-						if (res <= 0) break;
+            // 1. Читаем первые 6 байт (Header без Unit ID), чтобы точно узнать длину
+            int res = recv_full(client_sock, modbus_rx, 6);
+            if (res <= 0) break;
 
-						uint16_t payload_len = (modbus_rx[4] << 8) | modbus_rx[5];
-						if (payload_len > (sizeof(modbus_rx) - 7)) break; // Защита от переполнения
+            // Длина оставшейся части пакета (Unit ID + PDU)
+            uint16_t remaining_len = (modbus_rx[4] << 8) | modbus_rx[5];
 
-						res = recv_full(client_sock, &modbus_rx[7], payload_len); // Читаем остаток
-						if (res <= 0) break;
+            // Защита от переполнения буфера
+            if (remaining_len == 0 || remaining_len > (sizeof(modbus_rx) - 6)) break;
 
-						int len = 7 + payload_len;
+            // 2. Дочитываем ровно столько, сколько указано (Unit ID + Function + Data)
+            res = recv_full(client_sock, &modbus_rx[6], remaining_len);
+            if (res <= 0) break;
 
-            uint8_t func = modbus_rx[7];
+//            uint8_t unit_id = modbus_rx[6];
+            uint8_t func    = modbus_rx[7];
             uint16_t start_reg = (modbus_rx[8] << 8) | modbus_rx[9];
             uint16_t reg_count = (modbus_rx[10] << 8) | modbus_rx[11];
             uint16_t max_allowed_reg = kairos_config.var_count * 2;
 
             int tx_total = 0;
 
-            // 1. Проверка адресации (кратность 2 и границы)
+            // Проверка адресации
             if (start_reg % 2 != 0 || reg_count % 2 != 0 || (start_reg + reg_count) > max_allowed_reg) {
-                memcpy(modbus_tx, modbus_rx, 8); // MBAP Header
-                modbus_tx[7] |= 0x80;     // Error flag
-                modbus_tx[8] = 0x02;      // Exception: Illegal Data Address
-                modbus_tx[4] = 0; modbus_tx[5] = 3;
+                memcpy(modbus_tx, modbus_rx, 8);
+                modbus_tx[7] |= 0x80;
+                modbus_tx[8] = 0x02;      // Illegal Data Address
                 tx_total = 9;
             }
-            // 2. Проверка на переполнение выходного буфера
             else if (9 + (reg_count * 2) > sizeof(modbus_tx)) {
                 memcpy(modbus_tx, modbus_rx, 8);
                 modbus_tx[7] |= 0x80;
-                modbus_tx[8] = 0x04;      // Exception: Slave Device Failure
-                modbus_tx[4] = 0; modbus_tx[5] = 3;
+                modbus_tx[8] = 0x04;      // Slave Device Failure
                 tx_total = 9;
             }
             else {
-                // Формируем стандартный заголовок ответа (копируем Transaction ID и Unit ID)
-                memcpy(modbus_tx, modbus_rx, 8);
+                memcpy(modbus_tx, modbus_rx, 8); // Копируем MBAP (ID, Proto, Len, Unit) + Func
 
-                if (func == 0x03) { // Read Holding Registers
-                	modbus_tx[8] = (uint8_t)(reg_count * 2); // Byte count
-
-                    // Безопасная конвертация из системы в Modbus
+                if (func == 0x03) {
+                    modbus_tx[8] = (uint8_t)(reg_count * 2);
                     convert_to_modbus_32bit(
                         &project_vars.vars[start_reg / 2].as_uint32,
                         &modbus_tx[9],
                         reg_count / 2
                     );
-
-                    tx_total = 6 + 3 + (reg_count * 2);
+                    tx_total = 9 + (reg_count * 2);
                 }
-                else if (func == 0x10) { // Write Multiple Registers
-                    // Проверяем, что в пакете реально пришли данные, которые мы ожидаем
+                else if (func == 0x10) {
                     uint8_t bytes_to_write = modbus_rx[12];
-                    if (len >= (13 + bytes_to_write)) {
-                        // Безопасная конвертация из Modbus в систему
+                    if (remaining_len >= (7 + bytes_to_write)) { // 7 = UnitID(1) + Func(1) + Addr(2) + Count(2) + ByteCount(1)
                         convert_from_modbus_32bit(
                             &modbus_rx[13],
                             &project_vars.vars[start_reg / 2].as_uint32,
                             reg_count / 2
                         );
-
-                        // Ответ для 0x10: функция + адрес + количество (копируем из запроса)
                         memcpy(&modbus_tx[8], &modbus_rx[8], 4);
                         tx_total = 12;
                     }
                 }
                 else {
-                    // Функция не поддерживается
-                	modbus_tx[7] |= 0x80;
-                	modbus_tx[8] = 0x01; // Illegal Function
-                	modbus_tx[4] = 0; modbus_tx[5] = 3;
+                    modbus_tx[7] |= 0x80;
+                    modbus_tx[8] = 0x01; // Illegal Function
                     tx_total = 9;
                 }
             }
 
-            // Отправка ответа, если он сформирован
             if (tx_total > 0) {
-                // Обновляем длину в заголовке MBAP (байты 4-5)
+                // Устанавливаем корректную длину в ответе
                 uint16_t mb_payload_len = tx_total - 6;
                 modbus_tx[4] = (uint8_t)(mb_payload_len >> 8);
                 modbus_tx[5] = (uint8_t)(mb_payload_len & 0xFF);
-
-                if (send(client_sock, modbus_tx, tx_total, 0) < 0) {
-                    break; // Ошибка сети — закрываем этого клиента
-                }
+                Led_Blink(LED_2, 20);
+                if (send(client_sock, modbus_tx, tx_total, 0) < 0) break;
             }
-        } // Конец while(1) клиента
+        }
 
         // Закрываем сокет и возвращаемся к accept() для нового клиента
         close(client_sock);
@@ -365,7 +353,6 @@ void ConfigTask(void *argument) {
     }
 
     close(conn);
-    Led_Blink(LED_2, 20);
     osDelay(5);
   }
 }

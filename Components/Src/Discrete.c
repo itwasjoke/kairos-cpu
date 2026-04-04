@@ -16,9 +16,9 @@ void Get_Discrete(ProjectVars_t *project_vars){
 	  // 1. Читаем 4 дискретных входа
 	  for (int i = 0; i < 4; i++) {
 	    if (HAL_GPIO_ReadPin(DIN_Ports[i], DIN_Pins[i]) == GPIO_PIN_SET) {
-	    	project_vars->vars[DISCRETE_ID + i].as_bool = 1;
+	    	project_vars->vars[DISCRETE_ID + 4 + i].as_bool = 0;
 	    } else {
-	    	project_vars->vars[DISCRETE_ID + i].as_bool = 0;
+	    	project_vars->vars[DISCRETE_ID + 4 + i].as_bool = 1;
 	    }
 	  }
 
