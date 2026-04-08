@@ -7,6 +7,8 @@ void Analog_Init(Analog_Handle_t *comp_handle) {
 
   // Запускаем АЦП в режиме DMA на 4 замера
   HAL_ADC_Start_DMA(handle->hadc, (uint32_t*)handle->raw_data_adc, 4);
+  HAL_DAC_Start(handle->hdac, DAC_CHANNEL_1);
+  HAL_DAC_Start(handle->hdac, DAC_CHANNEL_2);
 }
 
 /**
@@ -40,15 +42,6 @@ void Analog_GetValues(ProjectVars_t *project_vars) {
                                       handle->channel_types_adc[i],
                                       i + 1);
   }
-
-  // 2. Обработка 2 каналов ЦАП (Индикация на LED 5-6)
-  for (int i = 0; i < 2; i++) {
-    uint32_t current_raw = HAL_DAC_GetValue(handle->hdac, dac_channels[i]);
-
-    project_vars->vars[ANALOG_ID+i+4].as_float = process_channel((uint16_t)current_raw,
-                                          handle->channel_types_dac[i],
-                                          i + 5);
-  }
 }
 
 void Analog_SetOutput(ProjectVars_t *project_vars) {
@@ -72,10 +65,9 @@ void Analog_SetOutput(ProjectVars_t *project_vars) {
 
       uint32_t dac_raw;
       dac_raw = (uint32_t)((value - min_val) / (max_val - min_val) * 4095.0f);
-      uint32_t dac_channel = (i == 0) ? DAC_CHANNEL_1 : DAC_CHANNEL_2;
+      uint32_t dac_channel = (i == 1) ? DAC_CHANNEL_1 : DAC_CHANNEL_2;
 
       HAL_DAC_SetValue(handle->hdac, dac_channel, DAC_ALIGN_12B_R, dac_raw);
-      HAL_DAC_Start(handle->hdac, dac_channel);
 
       uint8_t pwm_val = (uint8_t)(((float)dac_raw / 4095.0f) * 99.0f);
       Led_PWM_Set(i + 5, pwm_val);

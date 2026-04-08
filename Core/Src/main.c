@@ -1046,7 +1046,8 @@ void StartDefaultTask(void *argument)
   	// Вывод данных на вывод
   	Set_DiscreteOutput(&project_vars);
   	Analog_SetOutput(&project_vars);
-    osDelay(10);
+  	Led_Blink(LED_1, 100);
+    osDelay(200);
   }
   /* USER CODE END 5 */
 }
