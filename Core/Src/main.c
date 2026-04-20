@@ -1093,8 +1093,8 @@ void StartDefaultTask(void *argument)
   	// TODO чтение RS485
 
   	// Выполнение пользовательского кода
-  	if (code_correct)
-  			user_plugin(&api);
+//  	if (code_correct)
+//  			user_plugin(&api);
 
 
   	// Вывод данных на вывод

@@ -2,6 +2,21 @@
 
 volatile PidWorkStatus_e currentPidWorkStatus = PID_STATE_WAIT_FOR_TUNE;
 
+void Kairos_PID_Init(PidState_t *state) {
+    state->integralSum = 0.0f;
+    state->prevError = 0.0f;
+    state->isFirstRun = true;
+}
+
+void Kairos_AutoTune_Init(AutoTuneState_t *tuneState, float stepUp, float stepDown) {
+    tuneState->state = TUNE_STATE_IDLE;
+    tuneState->relayStepPos = stepUp;
+    tuneState->relayStepNeg = stepDown;
+    tuneState->cycles = 0;
+    tuneState->maxPv = -100000.0f; // Специально задаем крайние значения для поиска экстремумов
+    tuneState->minPv = 100000.0f;
+}
+
 // Вспомогательная функция для ограничения значений осталась без изменений
 static float Clamp(float value, float min, float max) {
     if (value > max) return max;
