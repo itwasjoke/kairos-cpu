@@ -59,11 +59,29 @@ typedef struct __attribute__((packed)){
 } GpioConfig_t;
 
 typedef struct __attribute__((packed)){
+	float Kp; // П - коэффициент регулятора
+	float Ki; // И - коэффициент регулятора
+	float Kd; // Д - коэффициент регулятора
+	float minValue;  // Нижнее ограничение от перенасыщения
+	float maxValue;  // Верхнее ограничение от перенасыщения
+	float dTime;  // Время дискретизации (сейчас функция регулятора просто запускается в main, не знаю, как использовать)
+	float sensZone; // зона чувствительности в процентах
+	float maxErr; // включение агрессивного режима при ошибке больше этого процента
+	float minErr; // включение точного режима при ошибке меньше этого процента
+	uint16_t setpointIndex; // индекс переменной для значения, которое нужно держать в обратной связи (для project_vars)
+	uint16_t outputIndex; // индекс переменной для выходного значения регулятора (для project_vars)
+	uint16_t feedbackIndex; // индекс переменной для обратной связи (для project_vars)
+	uint8_t direction; // 0 - прямое; 1 - обратное
+	uint8_t autoTuneRequested;
+} RegulatorConfig_t;
+
+typedef struct __attribute__((packed)){
 	MainConfig_t main_config;
 	GpioConfig_t gpio_config;
 	uint32_t config_version;
 	uint8_t var_count;
   uint8_t var_types[MAX_VARS];
+  RegulatorConfig_t regulator_config;
 } KairosConfig_t;
 
 extern ProjectVars_t project_vars;

@@ -5,17 +5,20 @@ typedef struct {
   GPIO_TypeDef* port;
   uint16_t pin;
   uint32_t timer; // Сколько мс осталось гореть
+  uint32_t timeout;
 } Led_State_t;
 
+const uint32_t step = 20; // Шаг обработки 20мс
+
 static Led_State_t leds[LED_COUNT] = {
-  {LED_RS_TX_GPIO_Port, LED_RS_TX_Pin, 0}, // RS_TX
-  {LED_RS_RX_GPIO_Port, LED_RS_RX_Pin, 0}, // RS_RX
-  {LED_CAN_TX_GPIO_Port, LED_CAN_TX_Pin, 0}, // CAN_TX
-  {LED_CAN_RX_GPIO_Port, LED_CAN_RX_Pin, 0}, // CAN_RX
-  {LED1_GPIO_Port, LED1_Pin, 0}, // Светодиод №1
-	{LED2_GPIO_Port, LED2_Pin, 0}, // Светодиод №2
-	{LED3_GPIO_Port, LED3_Pin, 0}, // Светодиод №3
-	{LED4_GPIO_Port, LED4_Pin, 0}, // Светодиод №4
+  {LED_RS_TX_GPIO_Port, LED_RS_TX_Pin, 0, 40}, // RS_TX
+  {LED_RS_RX_GPIO_Port, LED_RS_RX_Pin, 0, 40}, // RS_RX
+  {LED_CAN_TX_GPIO_Port, LED_CAN_TX_Pin, 0, 40}, // CAN_TX
+  {LED_CAN_RX_GPIO_Port, LED_CAN_RX_Pin, 0, 40}, // CAN_RX
+  {LED1_GPIO_Port, LED1_Pin, 0, 200}, // Светодиод №1
+	{LED2_GPIO_Port, LED2_Pin, 0, 20}, // Светодиод №2
+	{LED3_GPIO_Port, LED3_Pin, 0, 200}, // Светодиод №3
+	{LED4_GPIO_Port, LED4_Pin, 0, 20}, // Светодиод №4
 };
 
 // Внешние дескрипторы таймеров (настройте свои)
@@ -33,8 +36,8 @@ void LedService_Init(void) {
 }
 
 void Led_Blink(LedName_t led, uint32_t duration_ms) {
-  if (led < LED_COUNT) {
-    leds[led].timer = duration_ms;
+  if (led < LED_COUNT && leds[led].timer < step && duration_ms >= leds[led].timeout) {
+    leds[led].timer = duration_ms + leds[led].timeout;
     HAL_GPIO_WritePin(leds[led].port, leds[led].pin, GPIO_PIN_SET);
   }
 }
@@ -54,16 +57,18 @@ void Led_PWM_Set(uint8_t led_num, uint8_t duty_percent) {
 
 // Задача FreeRTOS
 void LedServiceTask(void *argument) {
-  const uint32_t step = 20; // Шаг обработки 20мс
-
   for(;;) {
     for (int i = 0; i < LED_COUNT; i++) {
       if (leds[i].timer > 0) {
-        if (leds[i].timer <= step) {
-          leds[i].timer = 0;
+        if (leds[i].timer <= leds[i].timeout) {
+        	if (leds[i].timer <= step) {
+						leds[i].timer = 0;
+					} else {
+						leds[i].timer -= step;
+					}
           HAL_GPIO_WritePin(leds[i].port, leds[i].pin, GPIO_PIN_RESET);
         } else {
-          leds[i].timer -= step;
+					leds[i].timer -= step;
         }
       }
     }

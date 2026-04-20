@@ -33,10 +33,7 @@ static float process_channel(uint16_t raw_val, SensorType_t type, uint8_t led_nu
  * @param output_array Массив float минимум из 6 элементов
  */
 void Analog_GetValues(ProjectVars_t *project_vars) {
-  // Константы каналов для автоматизации цикла ЦАП
-  const uint32_t dac_channels[2] = { DAC_CHANNEL_1, DAC_CHANNEL_2 };
-
-  // 1. Обработка 4 каналов АЦП (Индикация на LED 1-4)
+  // Обработка 4 каналов АЦП (Индикация на LED 1-4)
   for (int i = 0; i < 4; i++) {
   	project_vars->vars[ANALOG_ID+i].as_float = process_channel(handle->raw_data_adc[i],
                                       handle->channel_types_adc[i],

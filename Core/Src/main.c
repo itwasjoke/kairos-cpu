@@ -948,7 +948,50 @@ static void MX_GPIO_Init(void)
 }
 
 /* USER CODE BEGIN 4 */
+PidState_t pidState;
+AutoTuneState_t tuneState;
+extern volatile PidWorkStatus_e currentPidWorkStatus;
 
+void TIM4_IRQHandler(void) {
+    if (TIM4->SR & TIM_SR_UIF) { // Проверка флага прерывания
+        TIM4->SR &= ~TIM_SR_UIF; // Сброс флага
+
+        switch (currentPidWorkStatus) {
+            case PID_STATE_WAIT_FOR_TUNE:
+                // В этом состоянии мы ничего не делаем.
+                // Выход регулятора можно обнулить или держать в безопасном minValue
+                project_vars.vars[kairos_config.regulator_config.outputIndex].as_float =
+                    kairos_config.regulator_config.minValue;
+
+                // Здесь можно добавить проверку флага старта извне (например, по Modbus)
+                // if (start_tuning_flag) currentWorkStatus = PID_STATE_TUNING;
+                break;
+
+            case PID_STATE_TUNING:
+                // Инициализация тюнера при первом входе в состояние
+                if (tuneState.state == TUNE_STATE_IDLE) {
+                    Kairos_AutoTune_Init(&tuneState, 100.0f, 0.0f); // Шаги реле
+                }
+
+                // Вызов функции автотюнинга
+                uint32_t now = HAL_GetTick();
+                if (Kairos_AutoTune_Process(&kairos_config, &project_vars, &tuneState, now)) {
+                    // Если вернул true — расчет окончен, коэффициенты записаны в kairos_config
+                		currentPidWorkStatus = PID_STATE_READY;
+                    Kairos_PID_Init(&pidState); // Сброс памяти для мягкого старта ПИД
+                }
+                break;
+
+            case PID_STATE_READY:
+                // Обычный рабочий режим
+                Kairos_PID_Compute(&kairos_config, &project_vars, &pidState);
+                break;
+        }
+
+        // Тут можно добавить физический вывод на периферию после расчета
+        Analog_SetOutput(&project_vars);
+    }
+}
 /* USER CODE END 4 */
 
 /* USER CODE BEGIN Header_StartDefaultTask */
@@ -999,8 +1042,20 @@ void StartDefaultTask(void *argument)
 	  		project_vars.vars[i].as_uint32 = 0;
 	  		break;
 	  	}
-
 	  }
+
+	  // Инициализируем структуры памяти
+		Kairos_PID_Init(&pidState);
+
+		// Определяем режим работы
+		if (kairos_config.regulator_config.autoTuneRequested == 1) {
+			currentPidWorkStatus = PID_STATE_WAIT_FOR_TUNE;
+		} else {
+			currentPidWorkStatus = PID_STATE_READY;
+		}
+
+		// Запускаем аппаратный ПИД-цикл
+		Kairos_TIM4_Init(kairos_config.regulator_config.dTime);
 
 		CanTask = osThreadNew(CAN_Task, NULL, &CanTask_attributes);
   }
@@ -1041,13 +1096,12 @@ void StartDefaultTask(void *argument)
   	if (code_correct)
   			user_plugin(&api);
 
-  	// TODO реализация ПИД-регулятора
 
   	// Вывод данных на вывод
   	Set_DiscreteOutput(&project_vars);
   	Analog_SetOutput(&project_vars);
-  	Led_Blink(LED_1, 100);
-    osDelay(200);
+  	Led_Blink(LED_1, 200);
+    osDelay(10);
   }
   /* USER CODE END 5 */
 }
