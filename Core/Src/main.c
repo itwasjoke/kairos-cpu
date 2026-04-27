@@ -1157,6 +1157,7 @@ void init(){
 /* USER CODE END Header_StartDefaultTask */
 void StartDefaultTask(void *argument)
 {
+	init();
   /* init code for LWIP */
   MX_LWIP_Init();
   /* USER CODE BEGIN 5 */
