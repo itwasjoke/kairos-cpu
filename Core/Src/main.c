@@ -54,7 +54,9 @@ I2C_HandleTypeDef hi2c1;
 TIM_HandleTypeDef htim1;
 TIM_HandleTypeDef htim2;
 TIM_HandleTypeDef htim3;
+TIM_HandleTypeDef htim4;
 TIM_HandleTypeDef htim5;
+TIM_HandleTypeDef htim7;
 TIM_HandleTypeDef htim8;
 TIM_HandleTypeDef htim9;
 
@@ -159,6 +161,8 @@ static void MX_TIM9_Init(void);
 static void MX_TIM3_Init(void);
 static void MX_TIM5_Init(void);
 static void MX_TIM2_Init(void);
+static void MX_TIM4_Init(void);
+static void MX_TIM7_Init(void);
 void StartDefaultTask(void *argument);
 
 /* USER CODE BEGIN PFP */
@@ -211,6 +215,8 @@ int main(void)
   MX_TIM3_Init();
   MX_TIM5_Init();
   MX_TIM2_Init();
+  MX_TIM4_Init();
+  MX_TIM7_Init();
   /* USER CODE BEGIN 2 */
   const osMutexAttr_t i2cMutex_attributes = {
     "i2cMutex",
@@ -662,6 +668,55 @@ static void MX_TIM3_Init(void)
 }
 
 /**
+  * @brief TIM4 Initialization Function
+  * @param None
+  * @retval None
+  */
+static void MX_TIM4_Init(void)
+{
+
+  /* USER CODE BEGIN TIM4_Init 0 */
+
+  /* USER CODE END TIM4_Init 0 */
+
+  TIM_MasterConfigTypeDef sMasterConfig = {0};
+  TIM_OC_InitTypeDef sConfigOC = {0};
+
+  /* USER CODE BEGIN TIM4_Init 1 */
+
+  /* USER CODE END TIM4_Init 1 */
+  htim4.Instance = TIM4;
+  htim4.Init.Prescaler = 0;
+  htim4.Init.CounterMode = TIM_COUNTERMODE_UP;
+  htim4.Init.Period = 839;
+  htim4.Init.ClockDivision = TIM_CLOCKDIVISION_DIV1;
+  htim4.Init.AutoReloadPreload = TIM_AUTORELOAD_PRELOAD_DISABLE;
+  if (HAL_TIM_PWM_Init(&htim4) != HAL_OK)
+  {
+    Error_Handler();
+  }
+  sMasterConfig.MasterOutputTrigger = TIM_TRGO_RESET;
+  sMasterConfig.MasterSlaveMode = TIM_MASTERSLAVEMODE_DISABLE;
+  if (HAL_TIMEx_MasterConfigSynchronization(&htim4, &sMasterConfig) != HAL_OK)
+  {
+    Error_Handler();
+  }
+  sConfigOC.OCMode = TIM_OCMODE_PWM1;
+  sConfigOC.Pulse = 0;
+  sConfigOC.OCPolarity = TIM_OCPOLARITY_HIGH;
+  sConfigOC.OCFastMode = TIM_OCFAST_DISABLE;
+  if (HAL_TIM_PWM_ConfigChannel(&htim4, &sConfigOC, TIM_CHANNEL_1) != HAL_OK)
+  {
+    Error_Handler();
+  }
+  /* USER CODE BEGIN TIM4_Init 2 */
+
+  /* USER CODE END TIM4_Init 2 */
+  HAL_TIM_MspPostInit(&htim4);
+
+}
+
+/**
   * @brief TIM5 Initialization Function
   * @param None
   * @retval None
@@ -706,6 +761,44 @@ static void MX_TIM5_Init(void)
   /* USER CODE BEGIN TIM5_Init 2 */
 
   /* USER CODE END TIM5_Init 2 */
+
+}
+
+/**
+  * @brief TIM7 Initialization Function
+  * @param None
+  * @retval None
+  */
+static void MX_TIM7_Init(void)
+{
+
+  /* USER CODE BEGIN TIM7_Init 0 */
+
+  /* USER CODE END TIM7_Init 0 */
+
+  TIM_MasterConfigTypeDef sMasterConfig = {0};
+
+  /* USER CODE BEGIN TIM7_Init 1 */
+
+  /* USER CODE END TIM7_Init 1 */
+  htim7.Instance = TIM7;
+  htim7.Init.Prescaler = 0;
+  htim7.Init.CounterMode = TIM_COUNTERMODE_UP;
+  htim7.Init.Period = 839;
+  htim7.Init.AutoReloadPreload = TIM_AUTORELOAD_PRELOAD_DISABLE;
+  if (HAL_TIM_Base_Init(&htim7) != HAL_OK)
+  {
+    Error_Handler();
+  }
+  sMasterConfig.MasterOutputTrigger = TIM_TRGO_RESET;
+  sMasterConfig.MasterSlaveMode = TIM_MASTERSLAVEMODE_DISABLE;
+  if (HAL_TIMEx_MasterConfigSynchronization(&htim7, &sMasterConfig) != HAL_OK)
+  {
+    Error_Handler();
+  }
+  /* USER CODE BEGIN TIM7_Init 2 */
+
+  /* USER CODE END TIM7_Init 2 */
 
 }
 
@@ -960,8 +1053,8 @@ void TIM4_IRQHandler(void) {
             case PID_STATE_WAIT_FOR_TUNE:
                 // В этом состоянии мы ничего не делаем.
                 // Выход регулятора можно обнулить или держать в безопасном minValue
-                project_vars.vars[kairos_config.regulator_config.outputIndex].as_float =
-                    kairos_config.regulator_config.minValue;
+//                project_vars.vars[kairos_config.regulator_config.outputIndex].as_float =
+//                    kairos_config.regulator_config.minValue;
 
                 // Здесь можно добавить проверку флага старта извне (например, по Modbus)
                 // if (start_tuning_flag) currentWorkStatus = PID_STATE_TUNING;
@@ -992,17 +1085,8 @@ void TIM4_IRQHandler(void) {
         Analog_SetOutput(&project_vars);
     }
 }
-/* USER CODE END 4 */
 
-/* USER CODE BEGIN Header_StartDefaultTask */
-/**
-  * @brief  Function implementing the defaultTask thread.
-  * @param  argument: Not used
-  * @retval None
-  */
-/* USER CODE END Header_StartDefaultTask */
-void StartDefaultTask(void *argument)
-{
+void init(){
   HAL_StatusTypeDef statusConfig = getConfig(&eeprom, &kairos_config);
   if (statusConfig == HAL_OK && kairos_config.config_version != 0xFFFFFFFF) {
 
@@ -1054,11 +1138,25 @@ void StartDefaultTask(void *argument)
 			currentPidWorkStatus = PID_STATE_READY;
 		}
 
+		project_vars->vars[KAIROS_ID].as_uint32 = kairos_config.config_version;
+
 		// Запускаем аппаратный ПИД-цикл
-		Kairos_TIM4_Init(kairos_config.regulator_config.dTime);
+		Kairos_TIM7_Init(kairos_config.regulator_config.dTime);
 
 		CanTask = osThreadNew(CAN_Task, NULL, &CanTask_attributes);
   }
+}
+/* USER CODE END 4 */
+
+/* USER CODE BEGIN Header_StartDefaultTask */
+/**
+  * @brief  Function implementing the defaultTask thread.
+  * @param  argument: Not used
+  * @retval None
+  */
+/* USER CODE END Header_StartDefaultTask */
+void StartDefaultTask(void *argument)
+{
   /* init code for LWIP */
   MX_LWIP_Init();
   /* USER CODE BEGIN 5 */
@@ -1093,13 +1191,13 @@ void StartDefaultTask(void *argument)
   	// TODO чтение RS485
 
   	// Выполнение пользовательского кода
-//  	if (code_correct)
-//  			user_plugin(&api);
+  	if (code_correct)
+  			user_plugin(&api);
 
 
   	// Вывод данных на вывод
   	Set_DiscreteOutput(&project_vars);
-  	Analog_SetOutput(&project_vars);
+//  	Analog_SetOutput(&project_vars);
   	Led_Blink(LED_1, 200);
     osDelay(10);
   }

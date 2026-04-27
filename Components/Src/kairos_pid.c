@@ -1,5 +1,6 @@
 #include "kairos_pid.h"
 
+extern TIM_HandleTypeDef htim7;
 volatile PidWorkStatus_e currentPidWorkStatus = PID_STATE_WAIT_FOR_TUNE;
 
 void Kairos_PID_Init(PidState_t *state) {
@@ -142,36 +143,22 @@ bool Kairos_AutoTune_Process(KairosConfig_t *config, ProjectVars_t *vars, AutoTu
     return false;
 }
 
-void Kairos_TIM4_Init(float dTime) {
-    // 1. Тактирование
-    RCC->APB1ENR |= RCC_APB1ENR_TIM4EN;
-
-    // 2. Расчет Prescaler и ARR
-    // Для F407: если APB1 Prescaler > 1, частота таймеров = APB1 Clock * 2.
-    // Обычно APB1 = 42MHz, значит таймер тикает на 84MHz.
-    uint32_t psc = 839; // 84MHz / 840 = 100kHz (10 мкс на тик)
-
-    // Если используешь F103 (72MHz), то APB1 = 36MHz -> таймер 72MHz.
-    // Тогда для 100kHz нужно psc = 719.
-
+void Kairos_TIM7_Init(float dTime) {
+    // 1. Расчет ARR (Auto-Reload Register)
+    // Частота тактирования таймера после прескалера 839:
+    // 84MHz / 840 = 100 000 Гц (10 мкс на один тик)
     uint32_t arr = (uint32_t)(dTime * 100000.0f) - 1;
 
-    TIM4->PSC = psc;
-    TIM4->ARR = arr;
+    // 2. Установка нового значения периода
+    // Можно напрямую через регистр для скорости, либо через макрос HAL
+    __HAL_TIM_SET_AUTORELOAD(&htim7, arr);
 
-    // 3. Сброс счетчика и очистка флагов перед запуском
-    TIM4->EGR |= TIM_EGR_UG;
-    TIM4->SR &= ~TIM_SR_UIF;
+    // 3. Сброс счетчика, чтобы первый период был полным (аналог EGR -> UG)
+    __HAL_TIM_SET_COUNTER(&htim7, 0);
 
-    // 4. Разрешаем прерывание
-    TIM4->DIER |= TIM_DIER_UIE;
+    // 4. Очистка флага прерывания, который мог выставиться при установке UG
+    __HAL_TIM_CLEAR_IT(&htim7, TIM_IT_UPDATE);
 
-    // 5. Настройка NVIC
-    // Ставим приоритет 5 или ниже (численно больше), чтобы дружить с FreeRTOS
-    // и иметь возможность слать данные в очереди.
-    NVIC_SetPriority(TIM4_IRQn, 5);
-    NVIC_EnableIRQ(TIM4_IRQn);
-
-    // 6. Старт
-    TIM4->CR1 |= TIM_CR1_CEN;
+    // 5. Запуск таймера в режиме прерываний
+    HAL_TIM_Base_Start_IT(&htim7);
 }

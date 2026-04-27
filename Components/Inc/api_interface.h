@@ -6,9 +6,35 @@
 #define USER_CODE_ADDR  0x08060000       // Начало сектора 7
 #define MAGIC_KEY       0xCAFEBABE       // Метка валидности кода
 
-#define ANALOG_ID					0
-#define DISCRETE_ID				6
-#define SETPOINT_ID 			18
+#define KAIROS_ID								0
+
+#define ain_ch0_id							1
+#define ain_ch1_id							2
+#define ain_ch2_id							3
+#define ain_ch3_id							4
+
+#define aout_ch0_id							5
+#define aout_ch1_id							6
+
+#define dout_ch0_id							7
+#define dout_ch1_id							8
+#define dout_ch2_id							9
+#define dout_ch3_id							10
+
+#define dout_pwm_duty_ch0_id			11
+
+#define dout_pwm_freq_ch0_id			15
+
+#define din_ch0_id							16
+#define din_ch1_id							17
+#define din_ch2_id							18
+#define din_ch3_id							19
+
+#define counter_ch0_id					20
+#define counter_ch1_id					21
+#define counter_ch2_id					22
+#define counter_ch3_id					23
+#define setpoint_id							24
 
 // --- 1. Структуры переменных ---
 

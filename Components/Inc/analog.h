@@ -6,6 +6,11 @@
 #include "Config.h"
 
 typedef struct {
+    float gain;
+    float offset;
+} DAC_Calib_t;
+
+typedef struct {
   ADC_HandleTypeDef *hadc;
   DAC_HandleTypeDef *hdac;
   SensorType_t channel_types_adc[4];

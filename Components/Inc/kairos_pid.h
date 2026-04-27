@@ -47,7 +47,7 @@ typedef struct {
 // --- Прототипы функций ---
 void Kairos_PID_Init(PidState_t *state);
 void Kairos_PID_Compute(KairosConfig_t *config, ProjectVars_t *vars, PidState_t *state);
-void Kairos_TIM4_Init(float dTime);
+void Kairos_TIM7_Init(float dTime);
 
 void Kairos_AutoTune_Init(AutoTuneState_t *tuneState, float stepUp, float stepDown);
 bool Kairos_AutoTune_Process(KairosConfig_t *config, ProjectVars_t *vars, AutoTuneState_t *tuneState, uint32_t currentTimeMs);

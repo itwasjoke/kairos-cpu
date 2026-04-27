@@ -1,6 +1,11 @@
 #include "analog.h"
 
 static Analog_Handle_t *handle;
+DAC_Calib_t calib_data[2] = {
+    {0.805f, 0.032f}, // Для 1-го канала
+    {0.8046f, 0.0586f}  // Для 2-го канала
+};
+
 
 void Analog_Init(Analog_Handle_t *comp_handle) {
 	handle = comp_handle;
@@ -9,6 +14,15 @@ void Analog_Init(Analog_Handle_t *comp_handle) {
   HAL_ADC_Start_DMA(handle->hadc, (uint32_t*)handle->raw_data_adc, 4);
   HAL_DAC_Start(handle->hdac, DAC_CHANNEL_1);
   HAL_DAC_Start(handle->hdac, DAC_CHANNEL_2);
+}
+
+float Analog_Calibrate(float target_value, uint8_t channel) {
+    if (channel >= 2) return target_value;
+
+    // Линейная коррекция: V_corr = V_target * gain + offset
+    float calibrated = (target_value * calib_data[channel].gain) + calib_data[channel].offset;
+
+    return calibrated;
 }
 
 /**
@@ -35,7 +49,7 @@ static float process_channel(uint16_t raw_val, SensorType_t type, uint8_t led_nu
 void Analog_GetValues(ProjectVars_t *project_vars) {
   // Обработка 4 каналов АЦП (Индикация на LED 1-4)
   for (int i = 0; i < 4; i++) {
-  	project_vars->vars[ANALOG_ID+i].as_float = process_channel(handle->raw_data_adc[i],
+  	project_vars->vars[ain_ch0_id+i].as_float = process_channel(handle->raw_data_adc[i],
                                       handle->channel_types_adc[i],
                                       i + 1);
   }
@@ -47,7 +61,8 @@ void Analog_SetOutput(ProjectVars_t *project_vars) {
 
     for (uint8_t i = 0; i < 2; i++){
 
-    	float value = project_vars->vars[ANALOG_ID+4+i].as_float;
+    	float init_value = project_vars->vars[aout_ch0_id+i].as_float;
+    	float value = Analog_Calibrate(init_value, i);
       // Определяем границы в зависимости от типа канала
       if (handle->channel_types_dac[i] == TYPE_VOLTAGE_0_10V) {
           min_val = 0.0f;
