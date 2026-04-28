@@ -16,25 +16,26 @@
 #define aout_ch0_id							5
 #define aout_ch1_id							6
 
-#define dout_ch0_id							7
-#define dout_ch1_id							8
-#define dout_ch2_id							9
-#define dout_ch3_id							10
+#define din_ch0_id							7
+#define din_ch1_id							8
+#define din_ch2_id							9
+#define din_ch3_id							10
 
-#define dout_pwm_duty_ch0_id			11
+#define counter_ch0_id					11
+#define counter_ch1_id					12
+#define counter_ch2_id					13
+#define counter_ch3_id					14
 
-#define dout_pwm_freq_ch0_id			15
+#define dout_ch0_id							15
+#define dout_ch1_id							16
+#define dout_ch2_id							17
+#define dout_ch3_id							18
 
-#define din_ch0_id							16
-#define din_ch1_id							17
-#define din_ch2_id							18
-#define din_ch3_id							19
+#define dout_pwm_duty_ch0_id			19
 
-#define counter_ch0_id					20
-#define counter_ch1_id					21
-#define counter_ch2_id					22
-#define counter_ch3_id					23
-#define setpoint_id							24
+#define dout_pwm_freq_ch0_id			20
+
+#define setpoint_id							21
 
 // --- 1. Структуры переменных ---
 

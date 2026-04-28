@@ -686,9 +686,9 @@ static void MX_TIM4_Init(void)
 
   /* USER CODE END TIM4_Init 1 */
   htim4.Instance = TIM4;
-  htim4.Init.Prescaler = 0;
+  htim4.Init.Prescaler = 839;
   htim4.Init.CounterMode = TIM_COUNTERMODE_UP;
-  htim4.Init.Period = 839;
+  htim4.Init.Period = 65535;
   htim4.Init.ClockDivision = TIM_CLOCKDIVISION_DIV1;
   htim4.Init.AutoReloadPreload = TIM_AUTORELOAD_PRELOAD_DISABLE;
   if (HAL_TIM_PWM_Init(&htim4) != HAL_OK)
@@ -1045,47 +1045,6 @@ PidState_t pidState;
 AutoTuneState_t tuneState;
 extern volatile PidWorkStatus_e currentPidWorkStatus;
 
-void TIM4_IRQHandler(void) {
-    if (TIM4->SR & TIM_SR_UIF) { // Проверка флага прерывания
-        TIM4->SR &= ~TIM_SR_UIF; // Сброс флага
-
-        switch (currentPidWorkStatus) {
-            case PID_STATE_WAIT_FOR_TUNE:
-                // В этом состоянии мы ничего не делаем.
-                // Выход регулятора можно обнулить или держать в безопасном minValue
-//                project_vars.vars[kairos_config.regulator_config.outputIndex].as_float =
-//                    kairos_config.regulator_config.minValue;
-
-                // Здесь можно добавить проверку флага старта извне (например, по Modbus)
-                // if (start_tuning_flag) currentWorkStatus = PID_STATE_TUNING;
-                break;
-
-            case PID_STATE_TUNING:
-                // Инициализация тюнера при первом входе в состояние
-                if (tuneState.state == TUNE_STATE_IDLE) {
-                    Kairos_AutoTune_Init(&tuneState, 100.0f, 0.0f); // Шаги реле
-                }
-
-                // Вызов функции автотюнинга
-                uint32_t now = HAL_GetTick();
-                if (Kairos_AutoTune_Process(&kairos_config, &project_vars, &tuneState, now)) {
-                    // Если вернул true — расчет окончен, коэффициенты записаны в kairos_config
-                		currentPidWorkStatus = PID_STATE_READY;
-                    Kairos_PID_Init(&pidState); // Сброс памяти для мягкого старта ПИД
-                }
-                break;
-
-            case PID_STATE_READY:
-                // Обычный рабочий режим
-                Kairos_PID_Compute(&kairos_config, &project_vars, &pidState);
-                break;
-        }
-
-        // Тут можно добавить физический вывод на периферию после расчета
-        Analog_SetOutput(&project_vars);
-    }
-}
-
 void init(){
   HAL_StatusTypeDef statusConfig = getConfig(&eeprom, &kairos_config);
   if (statusConfig == HAL_OK && kairos_config.config_version != 0xFFFFFFFF) {
@@ -1138,7 +1097,7 @@ void init(){
 			currentPidWorkStatus = PID_STATE_READY;
 		}
 
-		project_vars->vars[KAIROS_ID].as_uint32 = kairos_config.config_version;
+		project_vars.vars[KAIROS_ID].as_uint32 = kairos_config.config_version;
 
 		// Запускаем аппаратный ПИД-цикл
 		Kairos_TIM7_Init(kairos_config.regulator_config.dTime);
@@ -1195,10 +1154,6 @@ void StartDefaultTask(void *argument)
   	if (code_correct)
   			user_plugin(&api);
 
-
-  	// Вывод данных на вывод
-  	Set_DiscreteOutput(&project_vars);
-//  	Analog_SetOutput(&project_vars);
   	Led_Blink(LED_1, 200);
     osDelay(10);
   }
@@ -1223,7 +1178,44 @@ void HAL_TIM_PeriodElapsedCallback(TIM_HandleTypeDef *htim)
     HAL_IncTick();
   }
   /* USER CODE BEGIN Callback 1 */
+  if (htim->Instance == TIM7) {
 
+  	switch (currentPidWorkStatus) {
+					case PID_STATE_WAIT_FOR_TUNE:
+							// В этом состоянии мы ничего не делаем.
+							// Выход регулятора можно обнулить или держать в безопасном minValue
+//                project_vars.vars[kairos_config.regulator_config.outputIndex].as_float =
+//                    kairos_config.regulator_config.minValue;
+
+							// Здесь можно добавить проверку флага старта извне (например, по Modbus)
+							// if (start_tuning_flag) currentWorkStatus = PID_STATE_TUNING;
+							break;
+
+					case PID_STATE_TUNING:
+							// Инициализация тюнера при первом входе в состояние
+							if (tuneState.state == TUNE_STATE_IDLE) {
+									Kairos_AutoTune_Init(&tuneState, 100.0f, 0.0f); // Шаги реле
+							}
+
+							// Вызов функции автотюнинга
+							uint32_t now = HAL_GetTick();
+							if (Kairos_AutoTune_Process(&kairos_config, &project_vars, &tuneState, now)) {
+									// Если вернул true — расчет окончен, коэффициенты записаны в kairos_config
+									currentPidWorkStatus = PID_STATE_READY;
+									Kairos_PID_Init(&pidState); // Сброс памяти для мягкого старта ПИД
+							}
+							break;
+
+					case PID_STATE_READY:
+							// Обычный рабочий режим
+							Kairos_PID_Compute(&kairos_config, &project_vars, &pidState);
+							break;
+			}
+
+			// Тут можно добавить физический вывод на периферию после расчета
+			Analog_SetOutput(&project_vars);
+			Set_DiscreteOutput(&project_vars);
+  }
   /* USER CODE END Callback 1 */
 }
 

@@ -30,36 +30,66 @@ void Get_Discrete(ProjectVars_t *project_vars){
 	  project_vars->vars[counter_ch0_id+3].as_uint32 = __HAL_TIM_GET_COUNTER(&htim5);
 }
 
-void Set_DiscreteOutput(ProjectVars_t *project_vars){
-	GPIO_PinState state = (project_vars->vars[dout_ch0_id].as_bool > 0) ? GPIO_PIN_SET : GPIO_PIN_RESET;
+static uint32_t last_freq = 0;
+static uint32_t last_duty = 0;
+static bool pwm_running = false;
 
-	if (project_vars->vars[dout_pwm_freq_ch0_id].as_uint32 != 0
-			&& project_vars->vars[dout_pwm_duty_ch0_id].as_uint32 != 0
-			&& state == GPIO_PIN_SET
-			) {
+void Set_DiscreteOutput(ProjectVars_t *project_vars) {
+    // Состояние из структуры (кэшируем для удобства)
+//    uint32_t current_freq = project_vars->vars[dout_pwm_freq_ch0_id].as_uint32;
+//    uint8_t current_duty = project_vars->vars[dout_pwm_duty_ch0_id].as_uint8;
+//    bool should_be_on = (project_vars->vars[dout_ch0_id].as_bool > 0);
 
-		uint32_t timer_clock_after_psc = 100000;
-		uint32_t arr = (timer_clock_after_psc / (uint32_t)project_vars->vars[dout_pwm_freq_ch0_id].as_uint32) - 1;
-		uint32_t pulse = (uint32_t)(((arr + 1) * project_vars->vars[dout_pwm_duty_ch0_id].as_uint32) / 100.0f);
+		uint32_t current_freq = 1000;
+		uint8_t current_duty = 50;
+		bool should_be_on = true;
 
-		// 3. Обновление регистров таймера
-		__HAL_TIM_SET_AUTORELOAD(&htim4, arr);
-		__HAL_TIM_SET_COMPARE(&htim4, TIM_CHANNEL_1, pulse); // Укажи нужный канал
+    // Проверяем, нужен ли нам ШИМ в данный момент
+    // ШИМ активен, только если есть частота, заполнение и общая команда "ВКЛ"
+    if (should_be_on && current_freq > 0 && current_duty > 0) {
 
-		// 4. Запуск ШИМ
-		HAL_TIM_PWM_Start(&htim4, TIM_CHANNEL_1);
+        // 1. Если параметры изменились — пересчитываем регистры
+        if (current_freq != last_freq || current_duty != last_duty) {
+            uint32_t timer_clock_after_psc = 100000;
+            uint32_t arr = (timer_clock_after_psc / current_freq) - 1;
 
-	} else if (project_vars->vars[dout_pwm_freq_ch0_id].as_uint32 != 0
-			&& project_vars->vars[dout_pwm_duty_ch0_id].as_uint32 != 0
-			) {
-		HAL_TIM_PWM_Stop(&htim4, TIM_CHANNEL_1);
+            // Защита от выхода за границы 100%
+            if (current_duty > 100) current_duty = 100;
+            uint32_t pulse = ((arr + 1) * current_duty) / 100;
 
-	} else {
-			HAL_GPIO_WritePin(DOUT_Ports[0], DOUT_Pins[0], state);
-	}
+            __HAL_TIM_SET_AUTORELOAD(&htim4, arr);
+            __HAL_TIM_SET_COMPARE(&htim4, TIM_CHANNEL_1, pulse);
 
-	for (uint8_t i = 1; i < 4; i++){
-			GPIO_PinState state = (project_vars->vars[dout_ch0_id + i].as_bool > 0) ? GPIO_PIN_SET : GPIO_PIN_RESET;
-			HAL_GPIO_WritePin(DOUT_Ports[i], DOUT_Pins[i], state);
-	}
+            last_freq = current_freq;
+            last_duty = current_duty;
+        }
+
+        // 2. Если ШИМ еще не запущен — запускаем один раз
+        if (!pwm_running) {
+            HAL_TIM_PWM_Start(&htim4, TIM_CHANNEL_1);
+            pwm_running = true;
+        }
+
+    } else {
+        // РЕЖИМ СТАТИЧЕСКОГО ВЫХОДА (Обычный дискретный сигнал)
+
+        // 3. Если ШИМ работал — останавливаем его
+        if (pwm_running) {
+            HAL_TIM_PWM_Stop(&htim4, TIM_CHANNEL_1);
+            pwm_running = false;
+            // Сбрасываем кэш параметров, чтобы при возврате в ШИМ он гарантированно обновился
+            last_freq = 0;
+            last_duty = 0;
+        }
+
+        // 4. Управляем ножкой как обычным GPIO
+        GPIO_PinState state = should_be_on ? GPIO_PIN_SET : GPIO_PIN_RESET;
+        HAL_GPIO_WritePin(DOUT_Ports[0], DOUT_Pins[0], state);
+    }
+
+    // Обработка остальных 3-х каналов (они просто дискретные)
+    for (uint8_t i = 1; i < 4; i++) {
+        GPIO_PinState state = (project_vars->vars[dout_ch0_id + i].as_bool > 0) ? GPIO_PIN_SET : GPIO_PIN_RESET;
+        HAL_GPIO_WritePin(DOUT_Ports[i], DOUT_Pins[i], state);
+    }
 }
