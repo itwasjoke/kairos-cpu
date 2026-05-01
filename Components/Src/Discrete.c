@@ -31,7 +31,7 @@ void Get_Discrete(ProjectVars_t *project_vars){
 }
 
 static uint16_t last_freq = 0;
-static uint8_t last_duty = 0;
+static float last_duty = 0.0;
 static bool pwm_running = false;
 
 void Set_DiscreteOutput(ProjectVars_t *project_vars) {
@@ -42,7 +42,7 @@ void Set_DiscreteOutput(ProjectVars_t *project_vars) {
 
     // Проверяем, нужен ли нам ШИМ в данный момент
     // ШИМ активен, только если есть частота, заполнение и общая команда "ВКЛ"
-    if (should_be_on && current_freq > 0 && current_duty > 0) {
+    if (should_be_on && current_freq > 0 && current_duty > 0.0) {
 
         // 1. Если параметры изменились — пересчитываем регистры
         if (current_freq != last_freq || current_duty != last_duty) {
@@ -50,8 +50,8 @@ void Set_DiscreteOutput(ProjectVars_t *project_vars) {
             uint32_t arr = (timer_clock_after_psc / current_freq) - 1;
 
             // Защита от выхода за границы 100%
-            if (current_duty > 100) current_duty = 100;
-            uint32_t pulse = ((arr + 1) * current_duty) / 100;
+            if (current_duty > 100.0) current_duty = 100.0;
+            uint32_t pulse = (uint32_t)((((float)arr + 1.0) * current_duty) / 100.0);
 
             __HAL_TIM_SET_AUTORELOAD(&htim4, arr);
             __HAL_TIM_SET_COMPARE(&htim4, TIM_CHANNEL_1, pulse);

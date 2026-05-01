@@ -5,6 +5,9 @@
 #include "led.h"
 #include "Config.h"
 
+#define ADC_CHANNELS	4
+#define ADC_SAMPLES		16
+
 typedef struct {
     float gain;
     float offset;
@@ -14,7 +17,7 @@ typedef struct {
   ADC_HandleTypeDef *hadc;
   DAC_HandleTypeDef *hdac;
   SensorType_t channel_types_adc[4];
-  uint16_t raw_data_adc[4];
+  uint16_t raw_data_adc[ADC_CHANNELS * ADC_SAMPLES];
   SensorType_t channel_types_dac[2];
 } Analog_Handle_t;
 

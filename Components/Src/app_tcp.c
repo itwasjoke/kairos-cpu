@@ -274,7 +274,8 @@ void ConfigTask(void *argument) {
 						send(conn, &ack, 1, 0);
 
             uint32_t write_addr = USER_CODE_ADDR;
-            HAL_FLASH_Program(FLASH_TYPEPROGRAM_WORD, write_addr, MAGIC_KEY);
+            // сначала стираем присутствие программы
+//            HAL_FLASH_Program(FLASH_TYPEPROGRAM_WORD, write_addr, 0);
             HAL_FLASH_Program(FLASH_TYPEPROGRAM_WORD, write_addr + 4, bin_len);
             write_addr += 8;
 
@@ -306,6 +307,8 @@ void ConfigTask(void *argument) {
             }
 
             if (success) {
+            	// подтверждаем присутствие программы
+            	HAL_FLASH_Program(FLASH_TYPEPROGRAM_WORD, USER_CODE_ADDR, MAGIC_KEY);
               send(conn, &ack, 1, 0);
               osDelay(200);
               HAL_FLASH_Lock();
