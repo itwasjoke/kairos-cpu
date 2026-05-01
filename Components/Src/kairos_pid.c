@@ -32,55 +32,72 @@ void Kairos_PID_Compute(KairosConfig_t *config, ProjectVars_t *vars, PidState_t 
     float feedback = vars->vars[rc->feedbackIndex].as_float;
 
     // 1. УЧЕТ НАПРАВЛЕНИЯ РЕГУЛИРОВАНИЯ
-    float error;
-    if (rc->direction == 0) {
-        error = setpoint - feedback; // Прямое
-    } else {
-        error = feedback - setpoint; // Обратное
-    }
-
+    // 0 - Прямое (охлаждение/сброс), 1 - Обратное (нагрев/затемнение)
+    float error = (rc->direction == 0) ? (setpoint - feedback) : (feedback - setpoint);
     float absError = fabsf(error);
 
-    // Мертвая зона
-    float sensZoneAbs = (rc->sensZone / 100.0f) * fabsf(setpoint);
-    if (absError < sensZoneAbs) {
+    // 2. МЕРТВАЯ ЗОНА (Теперь в абсолютных единицах, например 0.05В)
+    if (absError <= rc->sensZone) {
         error = 0.0f;
         absError = 0.0f;
     }
 
-    // Адаптивная логика
+    // 3. АДАПТИВНАЯ ЛОГИКА (Gain Scheduling)
     float currentKp = rc->Kp;
     float currentKi = rc->Ki;
     float currentKd = rc->Kd;
 
-    float maxErrAbs = (rc->maxErr / 100.0f) * fabsf(setpoint);
-    float minErrAbs = (rc->minErr / 100.0f) * fabsf(setpoint);
+    // Считаем пороги. Если в настройках 0, то адаптивность для этой зоны выключена.
+    // Пороги считаем в % от уставки, чтобы сохранить логику твоих переменных maxErr/minErr.
+    float maxErrThreshold = (rc->maxErr > 0) ? ((rc->maxErr / 100.0f) * fabsf(setpoint)) : -1.0f;
+    float minErrThreshold = (rc->minErr > 0) ? ((rc->minErr / 100.0f) * fabsf(setpoint)) : -1.0f;
 
-    if (absError > maxErrAbs && rc->maxErr > 0) {
+    if (maxErrThreshold > 0 && absError > maxErrThreshold) {
+        // ЗОНА 1: "Форсаж" (Ошибка очень большая)
+        // Задача: Быстро долететь до рабочей зоны.
+        // Действие: Увеличиваем P для скорости. I уменьшаем в 2 раза, но НЕ ВЫКЛЮЧАЕМ.
+        // Это копит интеграл, но защищает от эффекта взведенной пружины (windup), пока мы летим.
         currentKp *= 1.5f;
-        currentKi = 0.0f;
-    } else if (absError < minErrAbs && rc->minErr > 0) {
-        currentKp *= 0.8f;
+        currentKi *= 0.5f;
+    }
+    else if (minErrThreshold > 0 && absError < minErrThreshold && absError > 0.0f) {
+        // ЗОНА 3: "Снайперская доводка" (Мы в миллиметре от цели)
+        // Задача: Плавно лечь на уставку без перелета и подавить шум датчика.
+        // Действие: P снижаем, чтобы выход не дергался от микро-шумов. I форсируем,
+        // чтобы быстро и плавно "съесть" остаточную статическую ошибку.
+        currentKp *= 0.6f;
         currentKi *= 1.2f;
     }
+    // ЗОНА 2: "Крейсерская" (Ошибка между min и max, либо адаптивность выключена нулями).
+    // Работают твои классические заданные коэффициенты.
 
-    // Расчет компонентов ПИД
+    // 4. ПРОПОРЦИОНАЛЬНАЯ ЧАСТЬ
     float P_out = currentKp * error;
 
+    // 5. ИНТЕГРАЛЬНАЯ ЧАСТЬ (со строгим Anti-Windup)
     if (!state->isFirstRun && currentKi > 0.0f) {
-        state->integralSum += error * currentKi * rc->dTime;
+        float integralStep = error * currentKi * rc->dTime;
+        state->integralSum += integralStep;
+
+        // Важнейший момент: жестко зажимаем сумму интеграла в границах выхода.
+        // Это гарантирует, что если лампа на максимуме, а ошибка еще есть,
+        // регулятор не "улетит" в бесконечность и сможет мгновенно пойти назад.
         state->integralSum = Clamp(state->integralSum, rc->minValue, rc->maxValue);
     }
 
+    // 6. ДИФФЕРЕНЦИАЛЬНАЯ ЧАСТЬ
     float D_out = 0.0f;
     if (!state->isFirstRun && rc->dTime > 0.0f) {
         D_out = currentKd * (error - state->prevError) / rc->dTime;
     }
 
-    // Выход
+    // 7. СУММАТОР И ИТОГОВЫЙ ВЫХОД
     float output = P_out + state->integralSum + D_out;
+
+    // Обрезаем финальный выход (на случай, если P или D дали резкий выброс)
     vars->vars[rc->outputIndex].as_float = Clamp(output, rc->minValue, rc->maxValue);
 
+    // 8. СОХРАНЕНИЕ СОСТОЯНИЯ
     state->prevError = error;
     state->isFirstRun = false;
 }
