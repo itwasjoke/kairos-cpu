@@ -31,9 +31,8 @@
 #define dout_ch2_id							17
 #define dout_ch3_id							18
 
-#define dout_pwm_duty_ch0_id			19
-
-#define dout_pwm_freq_ch0_id			20
+#define dout_pwm_freq_ch0_id			19
+#define dout_pwm_duty_ch0_id			20
 
 #define setpoint_id							21
 

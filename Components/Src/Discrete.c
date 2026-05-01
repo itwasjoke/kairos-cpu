@@ -30,19 +30,15 @@ void Get_Discrete(ProjectVars_t *project_vars){
 	  project_vars->vars[counter_ch0_id+3].as_uint32 = __HAL_TIM_GET_COUNTER(&htim5);
 }
 
-static uint32_t last_freq = 0;
-static uint32_t last_duty = 0;
+static uint16_t last_freq = 0;
+static uint8_t last_duty = 0;
 static bool pwm_running = false;
 
 void Set_DiscreteOutput(ProjectVars_t *project_vars) {
     // Состояние из структуры (кэшируем для удобства)
-//    uint32_t current_freq = project_vars->vars[dout_pwm_freq_ch0_id].as_uint32;
-//    uint8_t current_duty = project_vars->vars[dout_pwm_duty_ch0_id].as_uint8;
-//    bool should_be_on = (project_vars->vars[dout_ch0_id].as_bool > 0);
-
-		uint32_t current_freq = 1000;
-		uint8_t current_duty = 50;
-		bool should_be_on = true;
+    uint16_t current_freq = project_vars->vars[dout_pwm_freq_ch0_id].as_uint16;
+    float current_duty = project_vars->vars[dout_pwm_duty_ch0_id].as_float;
+    bool should_be_on = (project_vars->vars[dout_ch0_id].as_bool > 0);
 
     // Проверяем, нужен ли нам ШИМ в данный момент
     // ШИМ активен, только если есть частота, заполнение и общая команда "ВКЛ"
@@ -72,7 +68,6 @@ void Set_DiscreteOutput(ProjectVars_t *project_vars) {
 
     } else {
         // РЕЖИМ СТАТИЧЕСКОГО ВЫХОДА (Обычный дискретный сигнал)
-
         // 3. Если ШИМ работал — останавливаем его
         if (pwm_running) {
             HAL_TIM_PWM_Stop(&htim4, TIM_CHANNEL_1);
