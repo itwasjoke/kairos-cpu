@@ -30,11 +30,13 @@ void Get_Discrete(ProjectVars_t *project_vars){
 	  project_vars->vars[counter_ch0_id+3].as_uint32 = __HAL_TIM_GET_COUNTER(&htim5);
 }
 
-static uint16_t last_freq = 0;
-static float last_duty = 0.0;
-static bool pwm_running = false;
+//static uint16_t last_freq = 0;
+//static float last_duty = 0.0;
+//static bool pwm_running = false;
 
 void Set_DiscreteOutput(ProjectVars_t *project_vars) {
+
+#if 0
     // Состояние из структуры (кэшируем для удобства)
     uint16_t current_freq = project_vars->vars[dout_pwm_freq_ch0_id].as_uint16;
     float current_duty = project_vars->vars[dout_pwm_duty_ch0_id].as_float;
@@ -81,9 +83,8 @@ void Set_DiscreteOutput(ProjectVars_t *project_vars) {
         GPIO_PinState state = should_be_on ? GPIO_PIN_SET : GPIO_PIN_RESET;
         HAL_GPIO_WritePin(DOUT_Ports[0], DOUT_Pins[0], state);
     }
-
-    // Обработка остальных 3-х каналов (они просто дискретные)
-    for (uint8_t i = 1; i < 4; i++) {
+#endif
+    for (uint8_t i = 0; i < 4; i++) {
         GPIO_PinState state = (project_vars->vars[dout_ch0_id + i].as_bool > 0) ? GPIO_PIN_SET : GPIO_PIN_RESET;
         HAL_GPIO_WritePin(DOUT_Ports[i], DOUT_Pins[i], state);
     }
